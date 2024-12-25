@@ -10,7 +10,8 @@ export class LensAgentClient implements Client {
     posts: LensPostManager;
     interactions: LensInteractionManager;
 
-    private profileId: `0x${string}`;
+    private accountUsernameId: `0x${string}`;
+    private accountAddress: `0x${string}`;
     private ipfs: StorjProvider;
 
     constructor(public runtime: IAgentRuntime) {
@@ -22,17 +23,22 @@ export class LensAgentClient implements Client {
         if (!privateKey) {
             throw new Error("EVM_PRIVATE_KEY is missing");
         }
-        const account = privateKeyToAccount(privateKey);
+        const signer = privateKeyToAccount(privateKey);
 
-        this.profileId = runtime.getSetting(
+        this.accountUsernameId = runtime.getSetting(
             "LENS_PROFILE_ID"
+        )! as `0x${string}`;
+
+        this.accountAddress = runtime.getSetting(
+            "EVM_ADDRESS"
         )! as `0x${string}`;
 
         this.client = new LensClient({
             runtime: this.runtime,
-            account,
+            signer,
             cache,
-            profileId: this.profileId,
+            accountUsernameId: this.accountUsernameId,
+            accountAddress: this.accountAddress,
         });
 
         elizaLogger.info("Lens client initialized.");
@@ -42,7 +48,7 @@ export class LensAgentClient implements Client {
         this.posts = new LensPostManager(
             this.client,
             this.runtime,
-            this.profileId,
+            this.accountUsernameId,
             cache,
             this.ipfs
         );
@@ -50,7 +56,7 @@ export class LensAgentClient implements Client {
         this.interactions = new LensInteractionManager(
             this.client,
             this.runtime,
-            this.profileId,
+            this.accountUsernameId,
             cache,
             this.ipfs
         );

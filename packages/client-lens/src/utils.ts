@@ -1,5 +1,6 @@
 import { stringToUuid } from "@elizaos/core";
 import { BroadcastResult } from "./types";
+import { PostResult } from "@lens-protocol/client";
 
 export function publicationId({
     pubId,
@@ -50,16 +51,19 @@ export function populateMentions(
     return result;
 }
 
-export const handleBroadcastResult = (
-    broadcastResult: any
-): BroadcastResult | undefined => {
-    const broadcastValue = broadcastResult.unwrap();
-
-    if ("id" in broadcastValue || "txId" in broadcastValue) {
-        return broadcastValue;
-    } else {
-        throw new Error();
+export const handlePostResult = (
+    postResult: PostResult
+): PostResult | undefined => {
+    console.log("hash postResult", postResult);
+    if ("hash" in postResult) {
+        return { __typename: "PostResponse", hash: postResult.hash };
     }
+
+    if ("reason" in postResult) {
+        return undefined;
+    }
+
+    throw new Error("Unexpected PostResult type");
 };
 
 export const getProfilePictureUri = (picture: any): string | undefined => {

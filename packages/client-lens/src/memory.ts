@@ -8,7 +8,7 @@ import {
 } from "@elizaos/core";
 import { publicationUuid } from "./utils";
 import { LensClient } from "./client";
-import { AnyPublicationFragment } from "@lens-protocol/client";
+import { AnyPost } from "@lens-protocol/client";
 
 export function createPublicationMemory({
     roomId,
@@ -17,11 +17,11 @@ export function createPublicationMemory({
 }: {
     roomId: UUID;
     runtime: IAgentRuntime;
-    publication: AnyPublicationFragment;
+    publication: AnyPost;
 }): Memory {
-    const commentOn = publication.commentOn
+    const commentOn = publication.id
         ? publicationUuid({
-              pubId: publication.commentOn.id,
+              pubId: publication.id,
               agentId: runtime.agentId,
           })
         : undefined;
@@ -34,7 +34,7 @@ export function createPublicationMemory({
         agentId: runtime.agentId,
         userId: runtime.agentId,
         content: {
-            text: publication.metadata.content,
+            text: "", //publication.metadata.content,
             source: "lens",
             url: "",
             commentOn,
@@ -45,6 +45,7 @@ export function createPublicationMemory({
     };
 }
 
+/**
 export async function buildConversationThread({
     publication,
     runtime,
@@ -110,3 +111,4 @@ export async function buildConversationThread({
     await processThread(publication);
     return thread;
 }
+     */

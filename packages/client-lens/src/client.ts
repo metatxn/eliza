@@ -1,64 +1,152 @@
 import { IAgentRuntime, elizaLogger } from "@elizaos/core";
 import {
-    AnyPublicationFragment,
-    LensClient as LensClientCore,
-    production,
-    LensTransactionStatusType,
-    LimitType,
+    type AnyPostFragment,
+    PublicClient as LensClientCore,
+    testnet,
+    TransactionStatusQuery,
+    PageSize,
     NotificationType,
-    ProfileFragment,
-    PublicationType,
-    FeedEventItemType,
+    AccountFragment,
+    PostType,
+    PostActionType,
+    SessionClient,
+    AccountManaged,
+    AccountAvailableFragment,
+    AccountAvailable,
+    Account,
+    type PostResult,
+    PostId,
+    SelfFundedTransactionRequest,
+    SponsoredTransactionRequest,
+    PostResponse,
 } from "@lens-protocol/client";
-import { Profile, BroadcastResult } from "./types";
 import { PrivateKeyAccount } from "viem";
-import { getProfilePictureUri, handleBroadcastResult, omit } from "./utils";
+import { getProfilePictureUri, handlePostResult, omit } from "./utils";
+import { evmAddress } from "@lens-protocol/client";
+import { fetchAccountsAvailable, post } from "@lens-protocol/client/actions";
 
 export class LensClient {
     runtime: IAgentRuntime;
-    account: PrivateKeyAccount;
+    signer: PrivateKeyAccount;
     cache: Map<string, any>;
     lastInteractionTimestamp: Date;
-    profileId: `0x${string}`;
+    accountUsernameId: `0x${string}`;
+    accountAddress: `0x${string}`;
 
     private authenticated: boolean;
-    private authenticatedProfile: ProfileFragment | null;
+    private authenticatedAccount: Account | null;
+    private sessionClient: SessionClient | null; // Store the sessionClient
     private core: LensClientCore;
 
     constructor(opts: {
         runtime: IAgentRuntime;
         cache: Map<string, any>;
-        account: PrivateKeyAccount;
-        profileId: `0x${string}`;
+        signer: PrivateKeyAccount;
+        accountUsernameId: `0x${string}`;
+        accountAddress: `0x${string}`;
     }) {
         this.cache = opts.cache;
         this.runtime = opts.runtime;
-        this.account = opts.account;
-        this.core = new LensClientCore({
-            environment: production,
+        this.signer = opts.signer;
+        this.core = LensClientCore.create({
+            environment: testnet,
+            //origin: "https://myappdomain.xyz", // Ignored if running in a browser
         });
         this.lastInteractionTimestamp = new Date();
-        this.profileId = opts.profileId;
+        this.accountUsernameId = opts.accountUsernameId;
+        this.accountAddress = opts.accountAddress;
         this.authenticated = false;
-        this.authenticatedProfile = null;
+        this.authenticatedAccount = null;
+        this.sessionClient = null; // Initialize sessionClient as null
     }
 
     async authenticate(): Promise<void> {
+        console.log(
+            "authenticating",
+            this.accountAddress,
+            this.signer,
+            this.core
+        );
         try {
-            const { id, text } =
-                await this.core.authentication.generateChallenge({
-                    signedBy: this.account.address,
-                    for: this.profileId,
+            const authenticated = await this.core.login({
+                accountOwner: {
+                    account: this.accountAddress,
+                    app: "0xe5439696f4057aF073c0FB2dc6e5e755392922e1",
+                    owner: this.signer?.address,
+                },
+                signMessage: (message) => this.signer.signMessage({ message }),
+            });
+
+            if (authenticated.isErr()) {
+                return console.error(
+                    "unable to authenticate: ",
+                    authenticated.error
+                );
+            }
+
+            // Use the SessionClient to interact with @lens-protocol/client/actions that require authentication
+            this.sessionClient = authenticated.value;
+            console.log("sessionClient", this.sessionClient);
+
+            //
+
+            // Call getAuthenticatedUser and handle the result
+            const authenticatedUserResult =
+                await this.sessionClient.getAuthenticatedUser();
+
+            if (authenticatedUserResult.isOk()) {
+                const result = await fetchAccountsAvailable(this.core, {
+                    managedBy: evmAddress(this.accountAddress),
+                    includeOwned: true,
                 });
 
-            const signature = await this.account.signMessage({
-                message: text,
-            });
+                if (result.isErr()) {
+                    console.error("Error fetching accounts: ", result.error);
+                    throw new Error("Error fetching accounts" + result.error);
+                }
+                console.log("result", result);
+                const accounts = result.value;
+                if (!accounts?.items || accounts.items.length === 0) {
+                    throw new Error("No profiles found for this address.");
+                }
 
-            await this.core.authentication.authenticate({ id, signature });
-            this.authenticatedProfile = await this.core.profile.fetch({
-                forProfileId: this.profileId,
-            });
+                // Attempt to find the matching profile if `accountUsernameId` is provided
+                let primaryAccount: AccountAvailable | undefined;
+                if (this.accountUsernameId) {
+                    primaryAccount = accounts.items.find(
+                        (item) =>
+                            item.account.username?.id === this.accountUsernameId
+                    );
+                }
+                // If the specified profile is not found, use the first one in the list
+                if (!primaryAccount) {
+                    primaryAccount = accounts.items[0];
+                    if (this.accountUsernameId) {
+                        elizaLogger.warn(
+                            `Could not find account with ID ${this.accountUsernameId}, using the first account instead`
+                        );
+                    }
+                }
+                if (!primaryAccount) {
+                    throw new Error(
+                        "Could not determine account ID from available accounts"
+                    );
+                }
+
+                this.authenticatedAccount = primaryAccount.account;
+
+                //this.authenticatedAccount = result[0];
+            } else {
+                console.error(
+                    "Error fetching authenticated user:",
+                    authenticatedUserResult.error
+                );
+            }
+            //await this.core.authentication.authenticate({ id, signature });
+
+            //this.authenticatedProfile = await this.core.profile.fetch({
+            //    forProfileId: this.profileId,
+            // });
 
             this.authenticated = true;
         } catch (error) {
@@ -67,54 +155,62 @@ export class LensClient {
         }
     }
 
-    async createPublication(
-        contentURI: string,
-        onchain: boolean = false,
+    async createPost(
+        contentUri: string,
         commentOn?: string
-    ): Promise<AnyPublicationFragment | null | undefined> {
+    ): Promise<typeof AnyPostFragment | null | undefined> {
         try {
-            if (!this.authenticated) {
+            if (!this.authenticated || !this.sessionClient) {
                 await this.authenticate();
                 elizaLogger.log("done authenticating");
             }
-            let broadcastResult;
 
+            // now that we are sure that we have authenticated, we can use sessionClient
+            if (!this.sessionClient) {
+                throw new Error("sessionClient is null after authentication");
+            }
+            let postResult: PostResult | undefined;
             if (commentOn) {
-                broadcastResult = onchain
-                    ? await this.createCommentOnchain(contentURI, commentOn)
-                    : await this.createCommentMomoka(contentURI, commentOn);
+                const commentResult = await post(this.sessionClient, {
+                    commentOn: { post: commentOn }, // Wrap commentOn in an object
+                    contentUri,
+                });
+
+                if (commentResult.isErr()) {
+                    console.error(
+                        "failed to post comment",
+                        commentResult.error
+                    );
+                    throw new Error("Failed to comment" + commentResult.error);
+                }
+                postResult = handlePostResult(commentResult.value);
             } else {
-                broadcastResult = onchain
-                    ? await this.createPostOnchain(contentURI)
-                    : await this.createPostMomoka(contentURI);
+                const postResultValue = await post(this.sessionClient, {
+                    contentUri: contentUri,
+                });
+                if (postResultValue.isErr()) {
+                    console.error("failed to post", postResultValue.error);
+                    throw new Error("Failed to post" + postResultValue.error);
+                }
+
+                postResult = handlePostResult(postResultValue.value);
+                console.log("postResult", postResult);
             }
 
-            elizaLogger.log("broadcastResult", broadcastResult);
+            elizaLogger.log("broadcastResult", postResult);
 
-            if (broadcastResult.id) {
-                return await this.core.publication.fetch({
-                    forId: broadcastResult.id,
-                });
-            }
-
-            const completion = await this.core.transaction.waitUntilComplete({
-                forTxHash: broadcastResult.txHash,
-            });
-
-            if (completion?.status === LensTransactionStatusType.Complete) {
-                return await this.core.publication.fetch({
-                    forTxHash: completion?.txHash,
-                });
+            if (!postResult) {
+                return null;
             }
         } catch (error) {
             elizaLogger.error("client-lens::client error: ", error);
             throw error;
         }
     }
-
+    /**
     async getPublication(
         pubId: string
-    ): Promise<AnyPublicationFragment | null> {
+    ): Promise<typeof AnyPostFragment | null> {
         if (this.cache.has(`lens/publication/${pubId}`)) {
             return this.cache.get(`lens/publication/${pubId}`);
         }
@@ -302,40 +398,6 @@ export class LensClient {
         return handleBroadcastResult(broadcastResult);
     }
 
-    private async createPostMomoka(
-        contentURI: string
-    ): Promise<BroadcastResult | undefined> {
-        console.log("createPostMomoka");
-        // gasless + signless if they enabled the lens profile manager
-        if (this.authenticatedProfile?.signless) {
-            const broadcastResult = await this.core.publication.postOnMomoka({
-                contentURI,
-            });
-            return handleBroadcastResult(broadcastResult);
-        }
-
-        // gasless with signed type data
-        const typedDataResult =
-            await this.core.publication.createMomokaPostTypedData({
-                contentURI,
-            });
-        console.log("typedDataResult", typedDataResult);
-        const { id, typedData } = typedDataResult.unwrap();
-
-        const signedTypedData = await this.account.signTypedData({
-            domain: omit(typedData.domain as any, "__typename"),
-            types: omit(typedData.types, "__typename"),
-            primaryType: "Post",
-            message: omit(typedData.value, "__typename"),
-        });
-
-        const broadcastResult = await this.core.transaction.broadcastOnMomoka({
-            id,
-            signature: signedTypedData,
-        });
-        return handleBroadcastResult(broadcastResult);
-    }
-
     private async createCommentOnchain(
         contentURI: string,
         commentOn: string
@@ -409,4 +471,5 @@ export class LensClient {
         });
         return handleBroadcastResult(broadcastResult);
     }
+         */
 }

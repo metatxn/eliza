@@ -12,7 +12,7 @@ import {
 } from "@elizaos/core";
 import type { LensClient } from "./client";
 import { toHex } from "viem";
-import { buildConversationThread, createPublicationMemory } from "./memory";
+//import { buildConversationThread, createPublicationMemory } from "./memory";
 import {
     formatPublication,
     formatTimeline,
@@ -21,7 +21,7 @@ import {
 } from "./prompts";
 import { publicationUuid } from "./utils";
 import { sendPublication } from "./actions";
-import { AnyPublicationFragment } from "@lens-protocol/client";
+import { AnyPostFragment } from "@lens-protocol/client";
 import { Profile } from "./types";
 import StorjProvider from "./providers/StorjProvider";
 
@@ -36,6 +36,7 @@ export class LensInteractionManager {
     ) {}
 
     public async start() {
+        /**
         const handleInteractionsLoop = async () => {
             try {
                 await this.handleInteractions();
@@ -52,12 +53,13 @@ export class LensInteractionManager {
         };
 
         handleInteractionsLoop();
+         */
     }
 
     public async stop() {
         if (this.timeout) clearTimeout(this.timeout);
     }
-
+    /**
     private async handleInteractions() {
         elizaLogger.info("Handle Lens interactions");
         // TODO: handle next() for pagination
@@ -277,4 +279,5 @@ export class LensInteractionManager {
             callback
         );
     }
+         */
 }

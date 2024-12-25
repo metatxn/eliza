@@ -8,7 +8,7 @@ import {
 } from "@elizaos/core";
 import { textOnly } from "@lens-protocol/metadata";
 import { createPublicationMemory } from "./memory";
-import { AnyPublicationFragment } from "@lens-protocol/client";
+import { AnyPost } from "@lens-protocol/client";
 import StorjProvider from "./providers/StorjProvider";
 
 export async function sendPublication({
@@ -25,25 +25,27 @@ export async function sendPublication({
     roomId: UUID;
     commentOn?: string;
     ipfs: StorjProvider;
-}): Promise<{ memory?: Memory; publication?: AnyPublicationFragment }> {
+}): Promise<{ memory?: Memory; publication?: AnyPost }> {
     // TODO: arweave provider for content hosting
     const metadata = textOnly({ content: content.text });
     const contentURI = await ipfs.pinJson(metadata);
 
-    const publication = await client.createPublication(
+    const post = await client.createPost(
         contentURI,
-        false, // TODO: support collectable settings
+        //false, // TODO: support collectable settings
         commentOn
     );
 
-    if (publication) {
+    if (post) {
         return {
+            /**
             publication,
             memory: createPublicationMemory({
                 roomId,
                 runtime,
                 publication: publication as AnyPublicationFragment,
             }),
+            */
         };
     }
 

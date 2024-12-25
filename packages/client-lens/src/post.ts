@@ -25,6 +25,7 @@ export class LensPostManager {
     ) {}
 
     public async start() {
+        /**
         const generateNewPubLoop = async () => {
             try {
                 await this.generateNewPublication();
@@ -40,12 +41,14 @@ export class LensPostManager {
         };
 
         generateNewPubLoop();
+         */
     }
 
     public async stop() {
         if (this.timeout) clearTimeout(this.timeout);
     }
 
+    /**
     private async generateNewPublication() {
         elizaLogger.info("Generating new publication");
         try {
@@ -138,4 +141,5 @@ export class LensPostManager {
             elizaLogger.error("Error generating new publication:", error);
         }
     }
+         */
 }

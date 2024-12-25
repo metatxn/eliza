@@ -3,17 +3,18 @@ import {
     messageCompletionFooter,
     shouldRespondFooter,
 } from "@elizaos/core";
-import { AnyPublicationFragment } from "@lens-protocol/client";
+import { AnyPost } from "@lens-protocol/client";
 
-export const formatPublication = (publication: AnyPublicationFragment) => {
-    return `ID: ${publication.id}
-    From: ${publication.by.metadata?.displayName} (@${publication.by.handle?.localName})${publication.by.handle?.localName})${publication.commentOn ? `\nIn reply to: @${publication.commentOn.by.handle?.localName}` : ""}
-Text: ${publication.metadata.content}`;
+export const formatPublication = (publication: AnyPost) => {
+return "";
+    //    return `ID: ${publication.id}
+//    From: ${publication.by.metadata?.displayName} (@${publication.by.handle?.localName})${publication.by.handle?.localName})${publication.commentOn ? `\nIn reply to: @${publication.commentOn.by.handle?.localName}` : ""}
+//Text: ${publication.metadata.content}`;
 };
 
 export const formatTimeline = (
     character: Character,
-    timeline: AnyPublicationFragment[]
+    timeline: AnyPost[]
 ) => `# ${character.name}'s Home Timeline
 ${timeline.map(formatPublication).join("\n")}
 `;

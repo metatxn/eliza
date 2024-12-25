@@ -1,3 +1,5 @@
+import { EvmAddress, Role, UUID } from "@lens-protocol/client";
+
 export type Profile = {
     id: string;
     profileId: string;
@@ -11,4 +13,13 @@ export type Profile = {
 export type BroadcastResult = {
     id?: string;
     txId?: string;
+};
+
+export type AccountOwner = {
+    role: Role.AccountOwner;
+    authentication_id: UUID;
+    account: EvmAddress;
+    app: EvmAddress;
+    owner: EvmAddress;
+    sponsored: boolean;
 };
