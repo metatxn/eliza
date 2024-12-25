@@ -1,49 +1,56 @@
 import { IAgentRuntime, elizaLogger } from "@elizaos/core";
 import {
-    type AnyPostFragment,
     PublicClient as LensClientCore,
     testnet,
-    TransactionStatusQuery,
-    PageSize,
     NotificationType,
-    AccountFragment,
-    PostType,
-    PostActionType,
+    type Account,
     SessionClient,
-    AccountManaged,
-    AccountAvailableFragment,
-    AccountAvailable,
-    Account,
-    type PostResult,
-    PostId,
-    SelfFundedTransactionRequest,
-    SponsoredTransactionRequest,
-    PostResponse,
+    CreatePostRequest,
+    type AnyPost,
+    PostResult,
+    PageSize,
+    NotificationsQuery,
+    type FullAccount,
+    EvmAddress,
 } from "@lens-protocol/client";
-import { PrivateKeyAccount } from "viem";
-import { getProfilePictureUri, handlePostResult, omit } from "./utils";
-import { evmAddress } from "@lens-protocol/client";
-import { fetchAccountsAvailable, post } from "@lens-protocol/client/actions";
-
+import {
+    fetchAccount,
+    fetchNotifications,
+    fetchPost,
+    fetchPosts,
+    fetchTimeline,
+    post,
+} from "@lens-protocol/client/actions";
+import { UserAccount, operationResultType } from "./types";
+import { PrivateKeyAccount, Client } from "viem";
+import { getProfilePictureUri, omit, handleTxnLifeCycle } from "./utils";
+import { parse } from "graphql";
 export class LensClient {
     runtime: IAgentRuntime;
     signer: PrivateKeyAccount;
+    walletClient: Client;
     cache: Map<string, any>;
     lastInteractionTimestamp: Date;
-    accountUsernameId: `0x${string}`;
-    accountAddress: `0x${string}`;
+    sessionClient: SessionClient | null;
+    accountAddress: EvmAddress;
 
     private authenticated: boolean;
     private authenticatedAccount: Account | null;
-    private sessionClient: SessionClient | null; // Store the sessionClient
     private core: LensClientCore;
+
+    // signer -> instance of wallet account to sign messages
+    // accountId -> Not necessary as of now
+    // sessionClient -> Will be used with lens client to make authenticated mutations
+    // accountAddress -> address of the lens-account, Not user address
+    // authenticated -> Bool to represent if the client is authenticated
+    // authenticatedAccount -> Account details of the lens-account
 
     constructor(opts: {
         runtime: IAgentRuntime;
         cache: Map<string, any>;
         signer: PrivateKeyAccount;
-        accountUsernameId: `0x${string}`;
-        accountAddress: `0x${string}`;
+        accountAddress: EvmAddress;
+        walletClient: Client;
     }) {
         this.cache = opts.cache;
         this.runtime = opts.runtime;
@@ -53,112 +60,58 @@ export class LensClient {
             //origin: "https://myappdomain.xyz", // Ignored if running in a browser
         });
         this.lastInteractionTimestamp = new Date();
-        this.accountUsernameId = opts.accountUsernameId;
-        this.accountAddress = opts.accountAddress;
         this.authenticated = false;
+        this.accountAddress = opts.accountAddress;
         this.authenticatedAccount = null;
-        this.sessionClient = null; // Initialize sessionClient as null
+        this.sessionClient = null;
+        this.walletClient = opts.walletClient;
     }
 
     async authenticate(): Promise<void> {
-        console.log(
-            "authenticating",
-            this.accountAddress,
-            this.signer,
-            this.core
-        );
         try {
+            // to login We need to provide, Account's unique address, app address, instance of
+            // user address made using PrivateKeyAccount.
+
+            // login as account owner, accountAddress is lens-account's address
+            // app address is the address of the app that is using the lens-account,
+            // owner address is actual user's address
             const authenticated = await this.core.login({
                 accountOwner: {
                     account: this.accountAddress,
                     app: "0xe5439696f4057aF073c0FB2dc6e5e755392922e1",
-                    owner: this.signer?.address,
+                    owner: this.signer.address,
                 },
                 signMessage: (message) => this.signer.signMessage({ message }),
             });
 
             if (authenticated.isErr()) {
-                return console.error(
-                    "unable to authenticate: ",
-                    authenticated.error
-                );
+                return console.error(authenticated.error);
             }
 
-            // Use the SessionClient to interact with @lens-protocol/client/actions that require authentication
-            this.sessionClient = authenticated.value;
-            console.log("sessionClient", this.sessionClient);
+            // sessionClient: { ... }
+            const sessionClient = authenticated.value;
 
-            //
+            // set session client to use it for authenticated mutations
+            this.sessionClient = sessionClient;
 
-            // Call getAuthenticatedUser and handle the result
-            const authenticatedUserResult =
-                await this.sessionClient.getAuthenticatedUser();
-
-            if (authenticatedUserResult.isOk()) {
-                const result = await fetchAccountsAvailable(this.core, {
-                    managedBy: evmAddress(this.accountAddress),
-                    includeOwned: true,
-                });
-
-                if (result.isErr()) {
-                    console.error("Error fetching accounts: ", result.error);
-                    throw new Error("Error fetching accounts" + result.error);
-                }
-                console.log("result", result);
-                const accounts = result.value;
-                if (!accounts?.items || accounts.items.length === 0) {
-                    throw new Error("No profiles found for this address.");
-                }
-
-                // Attempt to find the matching profile if `accountUsernameId` is provided
-                let primaryAccount: AccountAvailable | undefined;
-                if (this.accountUsernameId) {
-                    primaryAccount = accounts.items.find(
-                        (item) =>
-                            item.account.username?.id === this.accountUsernameId
-                    );
-                }
-                // If the specified profile is not found, use the first one in the list
-                if (!primaryAccount) {
-                    primaryAccount = accounts.items[0];
-                    if (this.accountUsernameId) {
-                        elizaLogger.warn(
-                            `Could not find account with ID ${this.accountUsernameId}, using the first account instead`
-                        );
-                    }
-                }
-                if (!primaryAccount) {
-                    throw new Error(
-                        "Could not determine account ID from available accounts"
-                    );
-                }
-
-                this.authenticatedAccount = primaryAccount.account;
-
-                //this.authenticatedAccount = result[0];
+            // fetch account details from account address
+            const accountResult = await fetchAccount(sessionClient, {
+                address: this.accountAddress,
+            });
+            if (accountResult.isOk()) {
+                // set account details in authenticatedAccount
+                this.authenticatedAccount = accountResult.value;
+                this.authenticated = true;
             } else {
-                console.error(
-                    "Error fetching authenticated user:",
-                    authenticatedUserResult.error
-                );
+                throw new Error();
             }
-            //await this.core.authentication.authenticate({ id, signature });
-
-            //this.authenticatedProfile = await this.core.profile.fetch({
-            //    forProfileId: this.profileId,
-            // });
-
-            this.authenticated = true;
         } catch (error) {
             elizaLogger.error("client-lens::client error: ", error);
             throw error;
         }
     }
 
-    async createPost(
-        contentUri: string,
-        commentOn?: string
-    ): Promise<typeof AnyPostFragment | null | undefined> {
+    async createPost(contentUri: string, commentOn?: string): Promise<AnyPost> {
         try {
             if (!this.authenticated || !this.sessionClient) {
                 await this.authenticate();
@@ -169,188 +122,263 @@ export class LensClient {
             if (!this.sessionClient) {
                 throw new Error("sessionClient is null after authentication");
             }
-            let postResult: PostResult | undefined;
+
+            let req: CreatePostRequest;
+
             if (commentOn) {
-                const commentResult = await post(this.sessionClient, {
-                    commentOn: { post: commentOn }, // Wrap commentOn in an object
+                req = {
+                    commentOn: { post: commentOn },
                     contentUri,
-                });
-
-                if (commentResult.isErr()) {
-                    console.error(
-                        "failed to post comment",
-                        commentResult.error
-                    );
-                    throw new Error("Failed to comment" + commentResult.error);
-                }
-                postResult = handlePostResult(commentResult.value);
+                };
             } else {
-                const postResultValue = await post(this.sessionClient, {
-                    contentUri: contentUri,
-                });
-                if (postResultValue.isErr()) {
-                    console.error("failed to post", postResultValue.error);
-                    throw new Error("Failed to post" + postResultValue.error);
+                req = {
+                    contentUri,
+                };
+            }
+
+            const postExecutionResult = await post(this.sessionClient, req);
+            if (postExecutionResult.isErr()) {
+                console.error(
+                    "failed to post comment",
+                    postExecutionResult.error
+                );
+                throw new Error(
+                    "Failed to comment" + postExecutionResult.error
+                );
+            }
+            const postResult: operationResultType = postExecutionResult.value;
+
+            const txnResult: string = await handleTxnLifeCycle(
+                postResult,
+                this.walletClient,
+                this.signer
+            );
+
+            elizaLogger.log("Transaction result: ", txnResult);
+
+            // we have to return the post object
+            const postResponse = await fetchPost(this.core, {
+                txHash: txnResult,
+            });
+            if (postResponse.isOk()) {
+                const post = postResponse.value;
+                if (!post) {
+                    throw new Error("Post not found after creation");
                 }
-
-                postResult = handlePostResult(postResultValue.value);
-                console.log("postResult", postResult);
+                return post;
             }
-
-            elizaLogger.log("broadcastResult", postResult);
-
-            if (!postResult) {
-                return null;
-            }
+            throw new Error("Failed to fetch created post");
         } catch (error) {
             elizaLogger.error("client-lens::client error: ", error);
             throw error;
         }
     }
-    /**
-    async getPublication(
-        pubId: string
-    ): Promise<typeof AnyPostFragment | null> {
-        if (this.cache.has(`lens/publication/${pubId}`)) {
-            return this.cache.get(`lens/publication/${pubId}`);
+
+    async getPost(postId: string): Promise<AnyPost | null> {
+        if (this.cache.has(`lens/post/${postId}`)) {
+            return this.cache.get(`lens/post/${postId}`);
         }
 
-        const publication = await this.core.publication.fetch({ forId: pubId });
+        const postResult = await fetchPost(this.core, { post: postId });
 
-        if (publication)
-            this.cache.set(`lens/publication/${pubId}`, publication);
-
-        return publication;
+        if (postResult.isErr()) {
+            console.error("Error fetching post", postResult.error);
+            return null;
+        } else {
+            this.cache.set(`lens/post/${postId}`, postResult);
+            return postResult?.value;
+        }
     }
 
-    async getPublicationsFor(
-        profileId: string,
-        limit: number = 50
-    ): Promise<AnyPublicationFragment[]> {
-        const timeline: AnyPublicationFragment[] = [];
+    async getPostsFor(
+        authorAddress: string,
+        pageSize: number = 50
+    ): Promise<AnyPost[]> {
+        const timeline: AnyPost[] = [];
         let next: any | undefined = undefined;
 
         do {
             const { items, next: newNext } = next
                 ? await next()
-                : await this.core.publication.fetchAll({
-                      limit: LimitType.Fifty,
-                      where: {
-                          from: [profileId],
-                          publicationTypes: [PublicationType.Post],
+                : await fetchPosts(this.core, {
+                      pageSize: PageSize.Fifty,
+                      filter: {
+                          authors: [authorAddress],
                       },
                   });
 
-            items.forEach((publication) => {
-                this.cache.set(
-                    `lens/publication/${publication.id}`,
-                    publication
-                );
-                timeline.push(publication);
+            items.forEach((post) => {
+                this.cache.set(`lens/post/${post.id}`, post);
+                timeline.push(post);
             });
 
             next = newNext;
-        } while (next && timeline.length < limit);
+        } while (next && timeline.length < pageSize);
 
         return timeline;
     }
 
     async getMentions(): Promise<{
-        mentions: AnyPublicationFragment[];
+        mentions: AnyPost[];
         next?: () => {};
     }> {
-        if (!this.authenticated) {
+        if (!this.authenticated || !this.sessionClient) {
             await this.authenticate();
+            elizaLogger.log("done authenticating");
+        }
+
+        // now that we are sure that we have authenticated, we can use sessionClient
+        if (!this.sessionClient) {
+            throw new Error("sessionClient is null after authentication");
         }
         // TODO: we should limit to new ones or at least latest n
-        const result = await this.core.notifications.fetch({
-            where: {
-                highSignalFilter: false, // true,
+
+        const result = await fetchNotifications(this.sessionClient, {
+            filter: {
                 notificationTypes: [
                     NotificationType.Mentioned,
                     NotificationType.Commented,
                 ],
+                includeLowScore: true,
+                timeBasedAggregation: false,
             },
         });
-        const mentions: AnyPublicationFragment[] = [];
+        const mentions: AnyPost[] = [];
 
-        const { items, next } = result.unwrap();
-
+        const unwrappedResult = result.unwrapOr({ items: [], next: undefined });
+        const items = unwrappedResult?.items;
+        const next =
+            "next" in unwrappedResult ? unwrappedResult?.next : undefined;
         items.map((notification) => {
             // @ts-ignore NotificationFragment
             const item = notification.publication || notification.comment;
             if (!item.isEncrypted) {
                 mentions.push(item);
-                this.cache.set(`lens/publication/${item.id}`, item);
+                this.cache.set(`lens/post/${item.id}`, item);
             }
         });
 
         return { mentions, next };
     }
 
-    async getProfile(profileId: string): Promise<Profile> {
-        if (this.cache.has(`lens/profile/${profileId}`)) {
-            return this.cache.get(`lens/profile/${profileId}`) as Profile;
+    // @note: smartAccountAddress is the address of the lens-account. when username is created then
+    // a smart account is created with the username and the address of the smart contract is the smartAccountAddress
+    // In LensV3, everything is getting accumulated at this address.
+    async getAccount(handle: string): Promise<UserAccount> {
+        if (this.cache.has(`lens/account/${handle}`)) {
+            return this.cache.get(`lens/account/${handle}`) as UserAccount;
         }
 
-        const result = await this.core.profile.fetch({
-            forProfileId: profileId,
-        });
-        if (!result?.id) {
-            elizaLogger.error("Error fetching user by profileId");
+        // TODO: this is a temporary solution, we need to account metadata from fetchAccount, as of now it is not returning metadata
+        const graphqlQuery = parse(`
+                query Account($request: AccountRequest!) {
+                            account(request: $request) {
+                                address
+                                metadata {
+                                    bio
+                                    coverPicture
+                                    id
+                                    name
+                                    picture
+                                    attributes {
+                                        type
+                                        key
+                                        value
+                                    }
+                                }
+                                username {
+                                    id
+                                    linkedTo
+                                    localName
+                                    namespace {
+                                        address
+                                        namespace
+                                        createdAt
+                                        metadata {
+                                            description
+                                            id
+                                        }
+                                        owner
+                                        stats {
+                                            totalUsernames
+                                        }
+                                    }
+                                    value
+                                    timestamp
+                                    ownedBy
+                                }
+                                score
+                            }
+                        }`);
 
-            throw "getProfile ERROR";
-        }
-
-        const profile: Profile = {
-            id: "",
-            profileId,
-            name: "",
-            handle: "",
+        const variables = {
+            handle: handle,
         };
 
-        profile.id = result.id;
-        profile.name = result.metadata?.displayName;
-        profile.handle = result.handle?.localName;
-        profile.bio = result.metadata?.bio;
-        profile.pfp = getProfilePictureUri(result.metadata?.picture);
+        const result = await this.core.query(graphqlQuery, variables);
+        if (!result?.isOk) {
+            elizaLogger.error("Error fetching user by account address");
 
-        this.cache.set(`lens/profile/${profileId}`, profile);
+            throw "getAccount ERROR";
+        }
 
-        return profile;
+        const account: UserAccount = {
+            usernameId: "",
+            address: "0x" as EvmAddress,
+            name: "",
+            localName: "",
+            namespace: "",
+            picture: "",
+            bio: "",
+            cover: "",
+        };
+
+        elizaLogger.debug("gql query result", result);
+        if (result.isOk()) {
+            const data = result.value as any;
+            account.usernameId = data.id;
+            account.address = data.address;
+            account.name = data.metadata?.name;
+            account.localName = data.handle?.localName;
+            account.bio = data.metadata?.bio;
+            account.picture = getProfilePictureUri(data.metadata?.picture);
+            account.cover = getProfilePictureUri(data.metadata?.coverPicture);
+        }
+        this.cache.set(`lens/account/${handle}`, account);
+
+        return account;
     }
 
     async getTimeline(
-        profileId: string,
+        userAddress: string,
         limit: number = 10
-    ): Promise<AnyPublicationFragment[]> {
+    ): Promise<AnyPost[]> {
         try {
             if (!this.authenticated) {
                 await this.authenticate();
             }
-            const timeline: AnyPublicationFragment[] = [];
+            const timeline: AnyPost[] = [];
             let next: any | undefined = undefined;
 
             do {
                 const result = next
                     ? await next()
-                    : await this.core.feed.fetch({
-                          where: {
-                              for: profileId,
-                              feedEventItemTypes: [FeedEventItemType.Post],
+                    : await fetchTimeline(this.core, {
+                          account: userAddress,
+                          filter: {
+                              eventType: ["POST", "QUOTE"], // "COMMENT", "REPOST",
                           },
                       });
 
                 const data = result.unwrap();
 
                 data.items.forEach((item) => {
-                    // private posts in orb clubs are encrypted
-                    if (timeline.length < limit && !item.root.isEncrypted) {
-                        this.cache.set(
-                            `lens/publication/${item.id}`,
-                            item.root
-                        );
-                        timeline.push(item.root as AnyPublicationFragment);
+                    // private posts in orb clubs are encrypted: encrypted posts are not available as of now in lensV3
+                    if (
+                        timeline.length < limit // && !item?.primary?.isEncrypted
+                    ) {
+                        this.cache.set(`lens/post/${item.id}`, item.root);
+                        timeline.push(item.root as AnyPost);
                     }
                 });
 
@@ -363,7 +391,7 @@ export class LensClient {
             throw new Error("client-lens:: getTimeline");
         }
     }
-
+    /**
     private async createPostOnchain(
         contentURI: string
     ): Promise<BroadcastResult | undefined> {

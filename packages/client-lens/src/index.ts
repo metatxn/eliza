@@ -1,17 +1,20 @@
 import { Client, IAgentRuntime, elizaLogger } from "@elizaos/core";
 import { privateKeyToAccount } from "viem/accounts";
+import { chains } from "@lens-network/sdk/viem";
 import { LensClient } from "./client";
 import { LensPostManager } from "./post";
 import { LensInteractionManager } from "./interactions";
 import StorjProvider from "./providers/StorjProvider";
+import { createWalletClient, http } from "viem";
+import { zksyncSepoliaTestnet } from "viem/zksync";
+import { EvmAddress } from "@lens-protocol/client";
 
 export class LensAgentClient implements Client {
     client: LensClient;
     posts: LensPostManager;
     interactions: LensInteractionManager;
 
-    private accountUsernameId: `0x${string}`;
-    private accountAddress: `0x${string}`;
+    private accountAddress: EvmAddress;
     private ipfs: StorjProvider;
 
     constructor(public runtime: IAgentRuntime) {
@@ -25,20 +28,23 @@ export class LensAgentClient implements Client {
         }
         const signer = privateKeyToAccount(privateKey);
 
-        this.accountUsernameId = runtime.getSetting(
-            "LENS_PROFILE_ID"
-        )! as `0x${string}`;
+        const walletClient = createWalletClient({
+            account: signer,
+            chain: chains.testnet,
+            transport: http(),
+        });
 
+        // need to change this to get the lens account address from runtime
         this.accountAddress = runtime.getSetting(
-            "EVM_ADDRESS"
-        )! as `0x${string}`;
+            "LENS_SMART_ACCOUT_ADDRESS"
+        )! as EvmAddress;
 
         this.client = new LensClient({
             runtime: this.runtime,
             signer,
             cache,
-            accountUsernameId: this.accountUsernameId,
             accountAddress: this.accountAddress,
+            walletClient,
         });
 
         elizaLogger.info("Lens client initialized.");
@@ -48,7 +54,7 @@ export class LensAgentClient implements Client {
         this.posts = new LensPostManager(
             this.client,
             this.runtime,
-            this.accountUsernameId,
+            this.accountAddress,
             cache,
             this.ipfs
         );
@@ -56,7 +62,7 @@ export class LensAgentClient implements Client {
         this.interactions = new LensInteractionManager(
             this.client,
             this.runtime,
-            this.accountUsernameId,
+            this.accountAddress,
             cache,
             this.ipfs
         );

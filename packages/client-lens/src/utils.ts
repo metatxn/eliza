@@ -1,19 +1,72 @@
 import { stringToUuid } from "@elizaos/core";
-import { BroadcastResult } from "./types";
+import { BroadcastResult, operationResultType } from "./types";
 import { PostResult } from "@lens-protocol/client";
+import { sendEip712Transaction, sendTransaction } from "viem/zksync";
+import { Account, Client } from "viem";
 
-export function publicationId({
-    pubId,
-    agentId,
-}: {
-    pubId: string;
-    agentId: string;
-}) {
+export const handleTxnLifeCycle = async (
+    operationResult: operationResultType,
+    walletClient: Client,
+    account: Account
+): Promise<string> => {
+    try {
+        if (operationResult.__typename === "PostResponse") {
+            return operationResult.hash;
+        }
+
+        if (operationResult?.__typename === "SponsoredTransactionRequest") {
+            const txnDetails = await sendEip712Transaction(walletClient, {
+                data: operationResult.raw.data,
+                gas: BigInt(operationResult.raw.gasLimit),
+                maxFeePerGas: BigInt(operationResult.raw.maxFeePerGas),
+                maxPriorityFeePerGas: BigInt(
+                    operationResult.raw.maxPriorityFeePerGas
+                ),
+                nonce: operationResult.raw.nonce,
+                paymaster:
+                    operationResult.raw.customData.paymasterParams?.paymaster,
+                paymasterInput:
+                    operationResult.raw.customData.paymasterParams
+                        ?.paymasterInput,
+                to: operationResult.raw.to,
+                value: BigInt(operationResult.raw.value),
+                chain: null,
+                account: account,
+            });
+
+            return txnDetails;
+        }
+
+        if (operationResult?.__typename === "SelfFundedTransactionRequest") {
+            const txnDetails = await sendTransaction(walletClient, {
+                data: operationResult?.raw?.data,
+                gas: BigInt(operationResult?.raw?.gasLimit),
+                maxFeePerGas: BigInt(operationResult?.raw?.maxFeePerGas),
+                maxPriorityFeePerGas: BigInt(
+                    operationResult?.raw?.maxPriorityFeePerGas
+                ),
+                nonce: operationResult?.raw?.nonce,
+                to: operationResult?.raw?.to,
+                type: "eip1559",
+                value: BigInt(operationResult?.raw?.value),
+                account: account,
+                chain: null,
+            });
+
+            return txnDetails;
+        }
+        throw new Error("Unexpected operation result type");
+    } catch (e) {
+        throw Error("Sign rejected");
+    }
+};
+
+export function postId({ pubId, agentId }: { pubId: string; agentId: string }) {
     return `${pubId}-${agentId}`;
 }
 
-export function publicationUuid(props: { pubId: string; agentId: string }) {
-    return stringToUuid(publicationId(props));
+export function postUuid(props: { pubId: string; agentId: string }) {
+    return stringToUuid(postId(props));
 }
 
 export function populateMentions(
@@ -51,6 +104,18 @@ export function populateMentions(
     return result;
 }
 
+export const handleBroadcastResult = (
+    broadcastResult: any
+): BroadcastResult | undefined => {
+    const broadcastValue = broadcastResult.unwrap();
+
+    if ("id" in broadcastValue || "txId" in broadcastValue) {
+        return broadcastValue;
+    } else {
+        throw new Error();
+    }
+};
+
 export const handlePostResult = (
     postResult: PostResult
 ): PostResult | undefined => {
@@ -85,4 +150,23 @@ export function omit<T extends object, K extends string>(
         }
     });
     return result;
+}
+
+// Type guard function to check if metadata has content
+export function hasContent(metadata: any): metadata is { content: string } {
+    return (
+        (metadata.__typename === "ArticleMetadata" ||
+            metadata.__typename === "AudioMetadata" ||
+            metadata.__typename === "TextOnlyMetadata" ||
+            metadata.__typename === "ImageMetadata" ||
+            metadata.__typename === "VideoMetadata" ||
+            metadata.__typename === "EmbedMetadata" ||
+            metadata.__typename === "LivestreamMetadata" ||
+            metadata.__typename === "MintMetadata" ||
+            metadata.__typename === "SpaceMetadata" ||
+            metadata.__typename === "StoryMetadata" ||
+            metadata.__typename === "ThreeDMetadata" ||
+            metadata.__typename === "TransactionMetadata") &&
+        typeof metadata.content === "string"
+    );
 }

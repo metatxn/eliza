@@ -619,9 +619,12 @@ importers:
       '@elizaos/core':
         specifier: workspace:*
         version: link:../core
+      '@lens-network/sdk':
+        specifier: 0.0.0-canary-20241203140504
+        version: 0.0.0-canary-20241203140504(ethers@6.13.4(bufferutil@4.0.8)(utf-8-validate@5.0.10))(viem@2.21.57(bufferutil@4.0.8)(typescript@5.6.3)(utf-8-validate@5.0.10)(zod@3.23.8))
       '@lens-protocol/client':
-        specifier: 0.0.0-canary-20241219204221
-        version: 0.0.0-canary-20241219204221(ethers@6.13.4(bufferutil@4.0.8)(utf-8-validate@5.0.10))(graphql@16.10.0)(typescript@5.6.3)(viem@2.21.57(bufferutil@4.0.8)(typescript@5.6.3)(utf-8-validate@5.0.10)(zod@3.23.8))
+        specifier: 0.0.0-canary-20241224162155
+        version: 0.0.0-canary-20241224162155(@lens-network/sdk@0.0.0-canary-20241203140504(ethers@6.13.4(bufferutil@4.0.8)(utf-8-validate@5.0.10))(viem@2.21.57(bufferutil@4.0.8)(typescript@5.6.3)(utf-8-validate@5.0.10)(zod@3.23.8)))(ethers@6.13.4(bufferutil@4.0.8)(utf-8-validate@5.0.10))(graphql@16.10.0)(typescript@5.6.3)(viem@2.21.57(bufferutil@4.0.8)(typescript@5.6.3)(utf-8-validate@5.0.10)(zod@3.23.8))
       '@lens-protocol/metadata':
         specifier: 2.0.0-next.2
         version: 2.0.0-next.2(zod@3.23.8)
@@ -630,7 +633,7 @@ importers:
         version: 0.0.2
       axios:
         specifier: ^1.7.9
-        version: 1.7.9(debug@4.4.0)
+        version: 1.7.9
       viem:
         specifier: ^2.21.57
         version: 2.21.57(bufferutil@4.0.8)(typescript@5.6.3)(utf-8-validate@5.0.10)(zod@3.23.8)
@@ -4675,8 +4678,23 @@ packages:
   '@leichtgewicht/ip-codec@2.0.5':
     resolution: {integrity: sha512-Vo+PSpZG2/fmgmiNzYK9qWRh8h/CHrwD0mo1h1DzL4yzHNSfWYujGTYsWGreD000gcgmZ7K4Ys6Tx9TxtsKdDw==}
 
-  '@lens-protocol/client@0.0.0-canary-20241219204221':
-    resolution: {integrity: sha512-JFYD/4FAXfL2DhM9o1poiKlovgUgF6H+H6S+J63jybocXs+RqrdMdDsv5aGCLDPFBmcAuVrqUjpXpT3s6YDOHw==}
+  '@lens-network/sdk@0.0.0-canary-20241203140504':
+    resolution: {integrity: sha512-w5mNEXQTP0pSkCq6b8sgM2/87dad1gFTP7hbaDxy4lXnM1fBrVA5OzxWRfCIJJY8/NGdw4RYhEzJoXf4IRR97w==}
+    engines: {node: '>=18', pnpm: '>=9.1.2'}
+    peerDependencies:
+      ethers: ^6.12.1
+      viem: ^2.12.0
+      zksync-ethers: ^6.7.1
+    peerDependenciesMeta:
+      ethers:
+        optional: true
+      viem:
+        optional: true
+      zksync-ethers:
+        optional: true
+
+  '@lens-protocol/client@0.0.0-canary-20241224162155':
+    resolution: {integrity: sha512-qomUpShsJF9FLu8SZXROGUST2WEu5iX2lmM5PfMmcIEzLmD/6IM2pwj6iS7Uh7jNXF3Ti4QgZHbF80JpPwQDnw==}
     peerDependencies:
       '@lens-network/sdk': canary
       ethers: ^6.13.4
@@ -4692,11 +4710,11 @@ packages:
       zksync-ethers:
         optional: true
 
-  '@lens-protocol/env@0.0.0-canary-20241219204221':
-    resolution: {integrity: sha512-8VbopawJeeyyVReoIdV4w1mjFzySQLO6xgtJi8T87t/GpM1JjBwOcV+Pv1PuEtS4TIx55rBRM6gZnYM8NeMMoQ==}
+  '@lens-protocol/env@0.0.0-canary-20241224162155':
+    resolution: {integrity: sha512-M8RQYPaTIuB4aVWa8+Y0zUJ+t8NL9f3mmlmtRHGjtb0h3IBJDhrKMLiBrrGVe4KwKRjRZvLBMgJPacQanWm8GQ==}
 
-  '@lens-protocol/graphql@0.0.0-canary-20241219204221':
-    resolution: {integrity: sha512-1wesx/JV9DKnK1AQoCYLlkiha5/zEZGIYhVc3ZrNId39OO/jKRy/1stU5VrvdW3H7/NA3yb/Vyjp3VyfiWxq9Q==}
+  '@lens-protocol/graphql@0.0.0-canary-20241224162155':
+    resolution: {integrity: sha512-J/RT0fLOKBBEKER7OizRbpUdf08+nlnTTGaFFySQ7dDNLec6kPS0GInDWDfeNpqUh/3bUS87McvKU8X5wlStVg==}
 
   '@lens-protocol/metadata@2.0.0-next.2':
     resolution: {integrity: sha512-vEL0QZ8rWcHZVo7zmx7Hdp/ANiw4Hml5tt53uE3KTMsZjY8u5TGm8o1DujWwlEzuawWqpduhbb7khQ2mJtmN0g==}
@@ -4710,11 +4728,11 @@ packages:
   '@lens-protocol/storage-node-client@0.0.2':
     resolution: {integrity: sha512-Miza+o4MMAiQZQ5wowthMjCv21fV94+3825r/E9Mh0lVEcj7RL0cgHWXAxEUQTko+lI6633EKPw4jjnpWzxvlw==}
 
-  '@lens-protocol/storage@0.0.0-canary-20241219204221':
-    resolution: {integrity: sha512-+yJUuWIDNeUt6Nu2T4pBFO2Nnq7kXYRakzQC+t3uAupBggcdUgL/SS+y1zXO4d4Pi7gISGilpE/t+KbNAsUJEg==}
+  '@lens-protocol/storage@0.0.0-canary-20241224162155':
+    resolution: {integrity: sha512-Y+u7fac9b9Mc7dygeTvxklunxHuDqgY4n5x0apAm0UmpnBQgHCW+X14G4U3uLQhJk7gJaPgEDhXNxFf0fDaWxw==}
 
-  '@lens-protocol/types@0.0.0-canary-20241219204221':
-    resolution: {integrity: sha512-1b2kWRPNaOtR509HAXuZnT8/4HZhBz7MrgsA/KNMFOWLOTPXxf6KfKh2sDuk2NnoDiZKhWBJbMHMaLXhR139cw==}
+  '@lens-protocol/types@0.0.0-canary-20241224162155':
+    resolution: {integrity: sha512-3HeF5dm0yTs5Jc826LJCgbboA9tqkP2PsyJZPI/Ibxmb68TsJTwuWM5kPSlBeusZGADncyghu7CK6wxa4hxrwA==}
 
   '@lerna/create@8.1.5':
     resolution: {integrity: sha512-Ku8yTGgeumayvMr8sml72EPb6WaoJhRjMTkMZrKSJtcLNDBlDpKwyUxDxNTBNBRUYWUuJCnj7eUH7pDNuc9odQ==}
@@ -18719,7 +18737,7 @@ snapshots:
   '@acuminous/bitsyntax@0.1.2':
     dependencies:
       buffer-more-ints: 1.0.0
-      debug: 4.4.0(supports-color@8.1.1)
+      debug: 4.4.0
       safe-buffer: 5.1.2
     transitivePeerDependencies:
       - supports-color
@@ -20652,7 +20670,7 @@ snapshots:
     dependencies:
       '@scure/bip32': 1.6.0
       abitype: 1.0.7(typescript@5.6.3)(zod@3.23.8)
-      axios: 1.7.9(debug@4.4.0)
+      axios: 1.7.9
       axios-mock-adapter: 1.22.0(axios@1.7.9)
       axios-retry: 4.5.0(axios@1.7.9)
       bip32: 4.0.0
@@ -22358,7 +22376,7 @@ snapshots:
   '@eslint/config-array@0.19.1':
     dependencies:
       '@eslint/object-schema': 2.1.5
-      debug: 4.4.0(supports-color@8.1.1)
+      debug: 4.4.0
       minimatch: 3.1.2
     transitivePeerDependencies:
       - supports-color
@@ -22384,7 +22402,7 @@ snapshots:
   '@eslint/eslintrc@3.2.0':
     dependencies:
       ajv: 6.12.6
-      debug: 4.4.0(supports-color@8.1.1)
+      debug: 4.4.0
       espree: 10.3.0
       globals: 14.0.0
       ignore: 5.3.2
@@ -23081,17 +23099,23 @@ snapshots:
 
   '@leichtgewicht/ip-codec@2.0.5': {}
 
-  '@lens-protocol/client@0.0.0-canary-20241219204221(ethers@6.13.4(bufferutil@4.0.8)(utf-8-validate@5.0.10))(graphql@16.10.0)(typescript@5.6.3)(viem@2.21.57(bufferutil@4.0.8)(typescript@5.6.3)(utf-8-validate@5.0.10)(zod@3.23.8))':
+  '@lens-network/sdk@0.0.0-canary-20241203140504(ethers@6.13.4(bufferutil@4.0.8)(utf-8-validate@5.0.10))(viem@2.21.57(bufferutil@4.0.8)(typescript@5.6.3)(utf-8-validate@5.0.10)(zod@3.23.8))':
+    optionalDependencies:
+      ethers: 6.13.4(bufferutil@4.0.8)(utf-8-validate@5.0.10)
+      viem: 2.21.57(bufferutil@4.0.8)(typescript@5.6.3)(utf-8-validate@5.0.10)(zod@3.23.8)
+
+  '@lens-protocol/client@0.0.0-canary-20241224162155(@lens-network/sdk@0.0.0-canary-20241203140504(ethers@6.13.4(bufferutil@4.0.8)(utf-8-validate@5.0.10))(viem@2.21.57(bufferutil@4.0.8)(typescript@5.6.3)(utf-8-validate@5.0.10)(zod@3.23.8)))(ethers@6.13.4(bufferutil@4.0.8)(utf-8-validate@5.0.10))(graphql@16.10.0)(typescript@5.6.3)(viem@2.21.57(bufferutil@4.0.8)(typescript@5.6.3)(utf-8-validate@5.0.10)(zod@3.23.8))':
     dependencies:
-      '@lens-protocol/env': 0.0.0-canary-20241219204221
-      '@lens-protocol/graphql': 0.0.0-canary-20241219204221(typescript@5.6.3)
-      '@lens-protocol/storage': 0.0.0-canary-20241219204221
-      '@lens-protocol/types': 0.0.0-canary-20241219204221
+      '@lens-protocol/env': 0.0.0-canary-20241224162155
+      '@lens-protocol/graphql': 0.0.0-canary-20241224162155(typescript@5.6.3)
+      '@lens-protocol/storage': 0.0.0-canary-20241224162155
+      '@lens-protocol/types': 0.0.0-canary-20241224162155
       '@urql/core': 5.1.0(graphql@16.10.0)
       '@urql/exchange-auth': 2.2.0(@urql/core@5.1.0(graphql@16.10.0))
       jwt-decode: 4.0.0
       loglevel: 1.9.2
     optionalDependencies:
+      '@lens-network/sdk': 0.0.0-canary-20241203140504(ethers@6.13.4(bufferutil@4.0.8)(utf-8-validate@5.0.10))(viem@2.21.57(bufferutil@4.0.8)(typescript@5.6.3)(utf-8-validate@5.0.10)(zod@3.23.8))
       ethers: 6.13.4(bufferutil@4.0.8)(utf-8-validate@5.0.10)
       viem: 2.21.57(bufferutil@4.0.8)(typescript@5.6.3)(utf-8-validate@5.0.10)(zod@3.23.8)
     transitivePeerDependencies:
@@ -23100,13 +23124,13 @@ snapshots:
       - graphql
       - typescript
 
-  '@lens-protocol/env@0.0.0-canary-20241219204221':
+  '@lens-protocol/env@0.0.0-canary-20241224162155':
     dependencies:
-      '@lens-protocol/types': 0.0.0-canary-20241219204221
+      '@lens-protocol/types': 0.0.0-canary-20241224162155
 
-  '@lens-protocol/graphql@0.0.0-canary-20241219204221(typescript@5.6.3)':
+  '@lens-protocol/graphql@0.0.0-canary-20241224162155(typescript@5.6.3)':
     dependencies:
-      '@lens-protocol/types': 0.0.0-canary-20241219204221
+      '@lens-protocol/types': 0.0.0-canary-20241224162155
       gql.tada: 1.8.10(graphql@16.10.0)(typescript@5.6.3)
       graphql: 16.10.0
     transitivePeerDependencies:
@@ -23123,12 +23147,12 @@ snapshots:
 
   '@lens-protocol/storage-node-client@0.0.2': {}
 
-  '@lens-protocol/storage@0.0.0-canary-20241219204221':
+  '@lens-protocol/storage@0.0.0-canary-20241224162155':
     dependencies:
-      '@lens-protocol/types': 0.0.0-canary-20241219204221
+      '@lens-protocol/types': 0.0.0-canary-20241224162155
       zod: 3.23.8
 
-  '@lens-protocol/types@0.0.0-canary-20241219204221':
+  '@lens-protocol/types@0.0.0-canary-20241224162155':
     dependencies:
       neverthrow: 8.1.1
       type-fest: 4.30.2
@@ -27071,7 +27095,7 @@ snapshots:
       '@typescript-eslint/types': 8.16.0
       '@typescript-eslint/typescript-estree': 8.16.0(typescript@5.6.3)
       '@typescript-eslint/visitor-keys': 8.16.0
-      debug: 4.4.0(supports-color@8.1.1)
+      debug: 4.4.0
       eslint: 9.16.0(jiti@2.4.2)
     optionalDependencies:
       typescript: 5.6.3
@@ -27104,7 +27128,7 @@ snapshots:
     dependencies:
       '@typescript-eslint/typescript-estree': 8.16.0(typescript@5.6.3)
       '@typescript-eslint/utils': 8.16.0(eslint@9.16.0(jiti@2.4.2))(typescript@5.6.3)
-      debug: 4.4.0(supports-color@8.1.1)
+      debug: 4.4.0
       eslint: 9.16.0(jiti@2.4.2)
       ts-api-utils: 1.4.3(typescript@5.6.3)
     optionalDependencies:
@@ -27135,7 +27159,7 @@ snapshots:
     dependencies:
       '@typescript-eslint/types': 8.16.0
       '@typescript-eslint/visitor-keys': 8.16.0
-      debug: 4.4.0(supports-color@8.1.1)
+      debug: 4.4.0
       fast-glob: 3.3.2
       is-glob: 4.0.3
       minimatch: 9.0.5
@@ -27821,7 +27845,7 @@ snapshots:
 
   agent-base@6.0.2:
     dependencies:
-      debug: 4.4.0(supports-color@8.1.1)
+      debug: 4.4.0
     transitivePeerDependencies:
       - supports-color
 
@@ -28153,13 +28177,13 @@ snapshots:
 
   axios-mock-adapter@1.22.0(axios@1.7.9):
     dependencies:
-      axios: 1.7.9(debug@4.4.0)
+      axios: 1.7.9
       fast-deep-equal: 3.1.3
       is-buffer: 2.0.5
 
   axios-retry@4.5.0(axios@1.7.9):
     dependencies:
-      axios: 1.7.9(debug@4.4.0)
+      axios: 1.7.9
       is-retry-allowed: 2.2.0
 
   axios@0.21.4:
@@ -28170,7 +28194,7 @@ snapshots:
 
   axios@0.27.2:
     dependencies:
-      follow-redirects: 1.15.9(debug@4.4.0)
+      follow-redirects: 1.15.9
       form-data: 4.0.1
     transitivePeerDependencies:
       - debug
@@ -28194,6 +28218,14 @@ snapshots:
   axios@1.7.8:
     dependencies:
       follow-redirects: 1.15.9(debug@4.4.0)
+      form-data: 4.0.1
+      proxy-from-env: 1.1.0
+    transitivePeerDependencies:
+      - debug
+
+  axios@1.7.9:
+    dependencies:
+      follow-redirects: 1.15.9
       form-data: 4.0.1
       proxy-from-env: 1.1.0
     transitivePeerDependencies:
@@ -30216,6 +30248,10 @@ snapshots:
     dependencies:
       ms: 2.1.3
 
+  debug@4.4.0:
+    dependencies:
+      ms: 2.1.3
+
   debug@4.4.0(supports-color@5.5.0):
     dependencies:
       ms: 2.1.3
@@ -31015,7 +31051,7 @@ snapshots:
       ajv: 6.12.6
       chalk: 4.1.2
       cross-spawn: 7.0.6
-      debug: 4.4.0(supports-color@8.1.1)
+      debug: 4.4.0
       escape-string-regexp: 4.0.0
       eslint-scope: 8.2.0
       eslint-visitor-keys: 4.2.0
@@ -31561,6 +31597,8 @@ snapshots:
     dependencies:
       async: 0.2.10
       which: 1.3.1
+
+  follow-redirects@1.15.9: {}
 
   follow-redirects@1.15.9(debug@4.3.7):
     optionalDependencies:
@@ -32554,7 +32592,7 @@ snapshots:
   http-proxy-agent@7.0.2:
     dependencies:
       agent-base: 7.1.3
-      debug: 4.4.0(supports-color@8.1.1)
+      debug: 4.4.0
     transitivePeerDependencies:
       - supports-color
 
@@ -32612,14 +32650,14 @@ snapshots:
   https-proxy-agent@5.0.1:
     dependencies:
       agent-base: 6.0.2
-      debug: 4.4.0(supports-color@8.1.1)
+      debug: 4.4.0
     transitivePeerDependencies:
       - supports-color
 
   https-proxy-agent@7.0.6:
     dependencies:
       agent-base: 7.1.3
-      debug: 4.4.0(supports-color@8.1.1)
+      debug: 4.4.0
     transitivePeerDependencies:
       - supports-color
 
@@ -35828,7 +35866,7 @@ snapshots:
       '@yarnpkg/lockfile': 1.1.0
       '@yarnpkg/parsers': 3.0.0-rc.46
       '@zkochan/js-yaml': 0.0.7
-      axios: 1.7.9(debug@4.4.0)
+      axios: 1.7.9
       chalk: 4.1.2
       cli-cursor: 3.1.0
       cli-spinners: 2.6.1
@@ -38790,7 +38828,7 @@ snapshots:
   socks-proxy-agent@8.0.5:
     dependencies:
       agent-base: 7.1.3
-      debug: 4.4.0(supports-color@8.1.1)
+      debug: 4.4.0
       socks: 2.8.3
     transitivePeerDependencies:
       - supports-color
@@ -39711,7 +39749,7 @@ snapshots:
       cac: 6.7.14
       chokidar: 4.0.2
       consola: 3.2.3
-      debug: 4.4.0(supports-color@8.1.1)
+      debug: 4.4.0
       esbuild: 0.24.0
       joycon: 3.1.1
       picocolors: 1.1.1
@@ -39738,7 +39776,7 @@ snapshots:
   tuf-js@2.2.1:
     dependencies:
       '@tufjs/models': 2.0.1
-      debug: 4.4.0(supports-color@8.1.1)
+      debug: 4.4.0
       make-fetch-happen: 13.0.1
     transitivePeerDependencies:
       - supports-color
@@ -40362,7 +40400,7 @@ snapshots:
   vite-node@2.1.5(@types/node@22.10.2)(terser@5.37.0):
     dependencies:
       cac: 6.7.14
-      debug: 4.4.0(supports-color@8.1.1)
+      debug: 4.4.0
       es-module-lexer: 1.5.4
       pathe: 1.1.2
       vite: 5.4.11(@types/node@22.10.2)(terser@5.37.0)
@@ -40475,7 +40513,7 @@ snapshots:
       '@vitest/spy': 2.1.5
       '@vitest/utils': 2.1.5
       chai: 5.1.2
-      debug: 4.4.0(supports-color@8.1.1)
+      debug: 4.4.0
       expect-type: 1.1.0
       magic-string: 0.30.17
       pathe: 1.1.2

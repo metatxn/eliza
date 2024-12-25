@@ -4,19 +4,19 @@ import {
     shouldRespondFooter,
 } from "@elizaos/core";
 import { AnyPost } from "@lens-protocol/client";
+import { hasContent } from "./utils";
 
-export const formatPublication = (publication: AnyPost) => {
-return "";
-    //    return `ID: ${publication.id}
-//    From: ${publication.by.metadata?.displayName} (@${publication.by.handle?.localName})${publication.by.handle?.localName})${publication.commentOn ? `\nIn reply to: @${publication.commentOn.by.handle?.localName}` : ""}
-//Text: ${publication.metadata.content}`;
+export const formatPost = (post: AnyPost) => {
+    return `ID: ${post.id}
+ From: ${post.__typename === "Post" ? "Author Name" : "Unknown"} (@${post.__typename === "Post" ? post.author?.username?.localName : "Unknown"})${post.__typename === "Post" && post.commentOn ? `\nIn reply to: @${post.commentOn?.author?.username?.localName}` : ""}
+Text: ${post.__typename === "Post" && hasContent(post.metadata) ? post.metadata.content : "No content available"}`;
 };
 
 export const formatTimeline = (
     character: Character,
     timeline: AnyPost[]
 ) => `# ${character.name}'s Home Timeline
-${timeline.map(formatPublication).join("\n")}
+${timeline.map(formatPost).join("\n")}
 `;
 
 export const headerTemplate = `

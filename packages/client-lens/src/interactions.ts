@@ -12,33 +12,34 @@ import {
 } from "@elizaos/core";
 import type { LensClient } from "./client";
 import { toHex } from "viem";
-//import { buildConversationThread, createPublicationMemory } from "./memory";
+import { buildConversationThread, createPostMemory } from "./memory";
 import {
-    formatPublication,
+    formatPost,
     formatTimeline,
     messageHandlerTemplate,
     shouldRespondTemplate,
 } from "./prompts";
-import { publicationUuid } from "./utils";
-import { sendPublication } from "./actions";
-import { AnyPostFragment } from "@lens-protocol/client";
-import { Profile } from "./types";
+import { postUuid } from "./utils";
+import { sendPost } from "./actions";
+import { AnyPost, EvmAddress } from "@lens-protocol/client";
+
 import StorjProvider from "./providers/StorjProvider";
+import { UserAccount } from "./types";
 
 export class LensInteractionManager {
     private timeout: NodeJS.Timeout | undefined;
     constructor(
         public client: LensClient,
         public runtime: IAgentRuntime,
-        private profileId: string,
+        private smartAccountAddress: EvmAddress, // TODO: check for good var name
         public cache: Map<string, any>,
         private ipfs: StorjProvider
     ) {}
 
     public async start() {
-        /**
         const handleInteractionsLoop = async () => {
             try {
+                console.log("Checking for Lens interactions");
                 await this.handleInteractions();
             } catch (error) {
                 elizaLogger.error(error);
@@ -53,26 +54,28 @@ export class LensInteractionManager {
         };
 
         handleInteractionsLoop();
-         */
     }
 
     public async stop() {
         if (this.timeout) clearTimeout(this.timeout);
     }
-    /**
+
     private async handleInteractions() {
         elizaLogger.info("Handle Lens interactions");
         // TODO: handle next() for pagination
         const { mentions } = await this.client.getMentions();
 
-        const agent = await this.client.getProfile(this.profileId);
+        const agent = await this.client.getAccount(this.smartAccountAddress);
         for (const mention of mentions) {
+            elizaLogger.debug("Handling mention", mention);
             const messageHash = toHex(mention.id);
             const conversationId = `${messageHash}-${this.runtime.agentId}`;
-            const roomId = stringToUuid(conversationId);
-            const userId = stringToUuid(mention.by.id);
-
-            const pastMemoryId = publicationUuid({
+            let roomId, userId;
+            if (mention.__typename === "Post") {
+                roomId = stringToUuid(conversationId);
+                userId = stringToUuid(mention?.author?.address);
+            }
+            const pastMemoryId = postUuid({
                 agentId: this.runtime.agentId,
                 pubId: mention.id,
             });
@@ -84,35 +87,38 @@ export class LensInteractionManager {
                 continue;
             }
 
-            await this.runtime.ensureConnection(
-                userId,
-                roomId,
-                mention.by.id,
-                mention.by.metadata?.displayName ||
-                    mention.by.handle?.localName,
-                "lens"
-            );
+            if (mention.__typename === "Post") {
+                await this.runtime.ensureConnection(
+                    userId,
+                    roomId,
+                    mention.author.address,
+                    mention.author?.username?.localName, // as of now, author metadata is not present in Post.author
+                    "lens"
+                );
 
-            const thread = await buildConversationThread({
-                client: this.client,
-                runtime: this.runtime,
-                publication: mention,
-            });
+                const thread = await buildConversationThread({
+                    client: this.client,
+                    runtime: this.runtime,
+                    post: mention,
+                });
 
-            const memory: Memory = {
-                // @ts-ignore Metadata
-                content: { text: mention.metadata.content, hash: mention.id },
-                agentId: this.runtime.agentId,
-                userId,
-                roomId,
-            };
-
-            await this.handlePublication({
-                agent,
-                publication: mention,
-                memory,
-                thread,
-            });
+                const memory: Memory = {
+                    content: {
+                        // @ts-ignore metadata.content
+                        text: mention.metadata.content,
+                        hash: mention.id,
+                    },
+                    agentId: this.runtime.agentId,
+                    userId,
+                    roomId,
+                };
+                await this.handlePublication({
+                    agent,
+                    post: mention,
+                    memory,
+                    thread,
+                });
+            }
         }
 
         this.client.lastInteractionTimestamp = new Date();
@@ -120,28 +126,33 @@ export class LensInteractionManager {
 
     private async handlePublication({
         agent,
-        publication,
+        post,
         memory,
         thread,
     }: {
-        agent: Profile;
-        publication: AnyPublicationFragment;
+        agent: UserAccount;
+        post: AnyPost;
         memory: Memory;
-        thread: AnyPublicationFragment[];
+        thread: AnyPost[];
     }) {
-        if (publication.by.id === agent.id) {
-            elizaLogger.info("skipping cast from bot itself", publication.id);
+        if (
+            post.__typename === "Post" &&
+            post?.author?.address === agent?.address
+        ) {
+            elizaLogger.info("skipping cast from bot itself", post.id);
             return;
         }
 
         if (!memory.content.text) {
-            elizaLogger.info("skipping cast with no text", publication.id);
+            elizaLogger.info("skipping cast with no text", post?.id);
             return { text: "", action: "IGNORE" };
         }
 
-        const currentPost = formatPublication(publication);
+        const currentPost = formatPost(post);
 
-        const timeline = await this.client.getTimeline(this.profileId);
+        const timeline = await this.client.getTimeline(
+            this.smartAccountAddress
+        );
 
         const formattedTimeline = formatTimeline(
             this.runtime.character,
@@ -150,10 +161,11 @@ export class LensInteractionManager {
 
         const formattedConversation = thread
             .map((pub) => {
+                if (pub.__typename !== "Post") return "";
                 // @ts-ignore Metadata
                 const content = pub.metadata.content;
-                return `@${pub.by.handle?.localName} (${new Date(
-                    pub.createdAt
+                return `@${pub.author?.username?.localName} (${new Date(
+                    pub.timestamp
                 ).toLocaleString("en-US", {
                     hour: "2-digit",
                     minute: "2-digit",
@@ -162,10 +174,11 @@ export class LensInteractionManager {
                 })}):
                 ${content}`;
             })
+            .filter(Boolean)
             .join("\n\n");
 
         const state = await this.runtime.composeState(memory, {
-            lensHandle: agent.handle,
+            lensHandle: agent.localName,
             timeline: formattedTimeline,
             currentPost,
             formattedConversation,
@@ -179,9 +192,9 @@ export class LensInteractionManager {
                 shouldRespondTemplate,
         });
 
-        const memoryId = publicationUuid({
+        const memoryId = postUuid({
             agentId: this.runtime.agentId,
-            pubId: publication.id,
+            pubId: post.id,
         });
 
         const castMemory =
@@ -189,10 +202,10 @@ export class LensInteractionManager {
 
         if (!castMemory) {
             await this.runtime.messageManager.createMemory(
-                createPublicationMemory({
+                createPostMemory({
                     roomId: memory.roomId,
                     runtime: this.runtime,
-                    publication,
+                    post,
                 })
             );
         }
@@ -233,7 +246,7 @@ export class LensInteractionManager {
 
         if (this.runtime.getSetting("LENS_DRY_RUN") === "true") {
             elizaLogger.info(
-                `Dry run: would have responded to publication ${publication.id} with ${responseContent.text}`
+                `Dry run: would have responded to publication ${post.id} with ${responseContent.text}`
             );
             return;
         }
@@ -246,16 +259,15 @@ export class LensInteractionManager {
                 if (memoryId && !content.inReplyTo) {
                     content.inReplyTo = memoryId;
                 }
-                const result = await sendPublication({
+                const result = await sendPost({
                     runtime: this.runtime,
                     client: this.client,
                     content: content,
                     roomId: memory.roomId,
-                    commentOn: publication.id,
+                    commentOn: post.id,
                     ipfs: this.ipfs,
                 });
-                if (!result.publication?.id)
-                    throw new Error("publication not sent");
+                if (!result?.post?.id) throw new Error("publication not sent");
 
                 // sendPublication lost response action, so we need to add it back here?
                 result.memory!.content.action = content.action;
@@ -279,5 +291,4 @@ export class LensInteractionManager {
             callback
         );
     }
-         */
 }

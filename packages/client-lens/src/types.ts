@@ -1,12 +1,32 @@
 import { EvmAddress, Role, UUID } from "@lens-protocol/client";
+import {
+    FollowResponse,
+    PostResponse,
+    SelfFundedTransactionRequest,
+    SponsoredTransactionRequest,
+    TransactionWillFail,
+    UnfollowResponse,
+    DeletePostResponse,
+} from "@lens-protocol/client";
 
-export type Profile = {
-    id: string;
-    profileId: string;
+export type operationResultType =
+    | PostResponse
+    | FollowResponse
+    | UnfollowResponse
+    | DeletePostResponse
+    | SponsoredTransactionRequest
+    | SelfFundedTransactionRequest
+    | TransactionWillFail;
+
+export type UserAccount = {
+    usernameId?: string | null;
+    address: EvmAddress;
     name?: string | null;
-    handle?: string;
-    pfp?: string;
+    localName?: string;
+    namespace?: string;
+    picture?: string;
     bio?: string | null;
+    cover?: string | null;
     url?: string;
 };
 
