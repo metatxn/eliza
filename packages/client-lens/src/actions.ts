@@ -45,6 +45,8 @@ export async function sendPost({
                 post: post,
             }),
         };
+    } else {
+        elizaLogger.error("Failed to create post");
     }
 
     return {};

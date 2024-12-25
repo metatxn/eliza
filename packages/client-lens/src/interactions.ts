@@ -31,7 +31,8 @@ export class LensInteractionManager {
     constructor(
         public client: LensClient,
         public runtime: IAgentRuntime,
-        private smartAccountAddress: EvmAddress, // TODO: check for good var name
+        // TODO: check for good var name and make it consistent throughout the codebase
+        private smartAccountAddress: EvmAddress,
         public cache: Map<string, any>,
         private ipfs: StorjProvider
     ) {}

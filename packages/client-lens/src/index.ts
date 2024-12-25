@@ -6,7 +6,6 @@ import { LensPostManager } from "./post";
 import { LensInteractionManager } from "./interactions";
 import StorjProvider from "./providers/StorjProvider";
 import { createWalletClient, http } from "viem";
-import { zksyncSepoliaTestnet } from "viem/zksync";
 import { EvmAddress } from "@lens-protocol/client";
 
 export class LensAgentClient implements Client {
@@ -15,6 +14,7 @@ export class LensAgentClient implements Client {
     interactions: LensInteractionManager;
 
     private accountAddress: EvmAddress;
+    private app: EvmAddress;
     private ipfs: StorjProvider;
 
     constructor(public runtime: IAgentRuntime) {
@@ -39,11 +39,14 @@ export class LensAgentClient implements Client {
             "LENS_SMART_ACCOUT_ADDRESS"
         )! as EvmAddress;
 
+        this.app = runtime.getSetting("LENS_APP")! as EvmAddress;
+
         this.client = new LensClient({
             runtime: this.runtime,
             signer,
             cache,
             accountAddress: this.accountAddress,
+            app: this.app,
             walletClient,
         });
 

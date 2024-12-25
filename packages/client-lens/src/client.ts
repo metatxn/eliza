@@ -7,10 +7,7 @@ import {
     SessionClient,
     CreatePostRequest,
     type AnyPost,
-    PostResult,
     PageSize,
-    NotificationsQuery,
-    type FullAccount,
     EvmAddress,
 } from "@lens-protocol/client";
 import {
@@ -33,6 +30,7 @@ export class LensClient {
     lastInteractionTimestamp: Date;
     sessionClient: SessionClient | null;
     accountAddress: EvmAddress;
+    app: EvmAddress;
 
     private authenticated: boolean;
     private authenticatedAccount: Account | null;
@@ -50,6 +48,7 @@ export class LensClient {
         cache: Map<string, any>;
         signer: PrivateKeyAccount;
         accountAddress: EvmAddress;
+        app: EvmAddress;
         walletClient: Client;
     }) {
         this.cache = opts.cache;
@@ -62,6 +61,7 @@ export class LensClient {
         this.lastInteractionTimestamp = new Date();
         this.authenticated = false;
         this.accountAddress = opts.accountAddress;
+        this.app = opts.app;
         this.authenticatedAccount = null;
         this.sessionClient = null;
         this.walletClient = opts.walletClient;
@@ -78,7 +78,7 @@ export class LensClient {
             const authenticated = await this.core.login({
                 accountOwner: {
                     account: this.accountAddress,
-                    app: "0xe5439696f4057aF073c0FB2dc6e5e755392922e1",
+                    app: this.app,
                     owner: this.signer.address,
                 },
                 signMessage: (message) => this.signer.signMessage({ message }),
@@ -269,7 +269,7 @@ export class LensClient {
             return this.cache.get(`lens/account/${handle}`) as UserAccount;
         }
 
-        // TODO: this is a temporary solution, we need to account metadata from fetchAccount, as of now it is not returning metadata
+        // TODO: this is a temporary solution, we need account metadata from fetchAccount, as of now it is not returning metadata
         const graphqlQuery = parse(`
                 query Account($request: AccountRequest!) {
                             account(request: $request) {
