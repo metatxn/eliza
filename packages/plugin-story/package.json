@@ -7,10 +7,10 @@
   "dependencies": {
     "@elizaos/core": "workspace:*",
     "@elizaos/plugin-trustdb": "workspace:*",
+    "@pinata/sdk": "^2.1.0",
     "@story-protocol/core-sdk": "1.2.0-rc.3",
     "tsup": "8.3.5",
-    "viem": "2.21.54",
-    "@pinata/sdk": "^2.1.0"
+    "viem": "^2.21.57"
   },
   "scripts": {
     "build": "tsup --format esm --dts",
