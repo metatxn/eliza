@@ -623,8 +623,8 @@ importers:
         specifier: 0.0.0-canary-20241203140504
         version: 0.0.0-canary-20241203140504(ethers@6.13.4(bufferutil@4.0.8)(utf-8-validate@5.0.10))(viem@2.21.57(bufferutil@4.0.8)(typescript@5.6.3)(utf-8-validate@5.0.10)(zod@3.23.8))
       '@lens-protocol/client':
-        specifier: 0.0.0-canary-20241224162155
-        version: 0.0.0-canary-20241224162155(@lens-network/sdk@0.0.0-canary-20241203140504(ethers@6.13.4(bufferutil@4.0.8)(utf-8-validate@5.0.10))(viem@2.21.57(bufferutil@4.0.8)(typescript@5.6.3)(utf-8-validate@5.0.10)(zod@3.23.8)))(ethers@6.13.4(bufferutil@4.0.8)(utf-8-validate@5.0.10))(graphql@16.10.0)(typescript@5.6.3)(viem@2.21.57(bufferutil@4.0.8)(typescript@5.6.3)(utf-8-validate@5.0.10)(zod@3.23.8))
+        specifier: 0.0.0-canary-20241226080441
+        version: 0.0.0-canary-20241226080441(@lens-network/sdk@0.0.0-canary-20241203140504(ethers@6.13.4(bufferutil@4.0.8)(utf-8-validate@5.0.10))(viem@2.21.57(bufferutil@4.0.8)(typescript@5.6.3)(utf-8-validate@5.0.10)(zod@3.23.8)))(ethers@6.13.4(bufferutil@4.0.8)(utf-8-validate@5.0.10))(graphql@16.10.0)(typescript@5.6.3)(viem@2.21.57(bufferutil@4.0.8)(typescript@5.6.3)(utf-8-validate@5.0.10)(zod@3.23.8))
       '@lens-protocol/metadata':
         specifier: 2.0.0-next.2
         version: 2.0.0-next.2(zod@3.23.8)
@@ -4693,8 +4693,8 @@ packages:
       zksync-ethers:
         optional: true
 
-  '@lens-protocol/client@0.0.0-canary-20241224162155':
-    resolution: {integrity: sha512-qomUpShsJF9FLu8SZXROGUST2WEu5iX2lmM5PfMmcIEzLmD/6IM2pwj6iS7Uh7jNXF3Ti4QgZHbF80JpPwQDnw==}
+  '@lens-protocol/client@0.0.0-canary-20241226080441':
+    resolution: {integrity: sha512-Hlwc16Z82YMS9P55U5OyMEIPI0JkZ7LuIKmF1FanKfaimRMrWSrlfpXJekxGy+PJMqwzBELt4ST57qk0sH3ciw==}
     peerDependencies:
       '@lens-network/sdk': canary
       ethers: ^6.13.4
@@ -4710,11 +4710,11 @@ packages:
       zksync-ethers:
         optional: true
 
-  '@lens-protocol/env@0.0.0-canary-20241224162155':
-    resolution: {integrity: sha512-M8RQYPaTIuB4aVWa8+Y0zUJ+t8NL9f3mmlmtRHGjtb0h3IBJDhrKMLiBrrGVe4KwKRjRZvLBMgJPacQanWm8GQ==}
+  '@lens-protocol/env@0.0.0-canary-20241226080441':
+    resolution: {integrity: sha512-fglOUMkpZsGewaPO7fMjgxvtKm2S8+M5cLWYfH1HZ3DeerC2WE3h0Fuv11ZO1LCXpWYVNAfMdhrFmhdaWrq39g==}
 
-  '@lens-protocol/graphql@0.0.0-canary-20241224162155':
-    resolution: {integrity: sha512-J/RT0fLOKBBEKER7OizRbpUdf08+nlnTTGaFFySQ7dDNLec6kPS0GInDWDfeNpqUh/3bUS87McvKU8X5wlStVg==}
+  '@lens-protocol/graphql@0.0.0-canary-20241226080441':
+    resolution: {integrity: sha512-LFVVbtB4PEFt7FezANY1MSrMBow3yfHqR9J1l4BwC4sNvl3Z+jH1C0DJaEnKdBNcSmqh84iTMZt8QzWl/azkpw==}
 
   '@lens-protocol/metadata@2.0.0-next.2':
     resolution: {integrity: sha512-vEL0QZ8rWcHZVo7zmx7Hdp/ANiw4Hml5tt53uE3KTMsZjY8u5TGm8o1DujWwlEzuawWqpduhbb7khQ2mJtmN0g==}
@@ -4728,11 +4728,11 @@ packages:
   '@lens-protocol/storage-node-client@0.0.2':
     resolution: {integrity: sha512-Miza+o4MMAiQZQ5wowthMjCv21fV94+3825r/E9Mh0lVEcj7RL0cgHWXAxEUQTko+lI6633EKPw4jjnpWzxvlw==}
 
-  '@lens-protocol/storage@0.0.0-canary-20241224162155':
-    resolution: {integrity: sha512-Y+u7fac9b9Mc7dygeTvxklunxHuDqgY4n5x0apAm0UmpnBQgHCW+X14G4U3uLQhJk7gJaPgEDhXNxFf0fDaWxw==}
+  '@lens-protocol/storage@0.0.0-canary-20241226080441':
+    resolution: {integrity: sha512-PW/crT0RkXqrHMDfkcxkkGNNHDPScLWa9+t0QlgfO+OK+gYb5cWpsGJvBkNorndgqNXZ4h7KA6/3/RbpE87asw==}
 
-  '@lens-protocol/types@0.0.0-canary-20241224162155':
-    resolution: {integrity: sha512-3HeF5dm0yTs5Jc826LJCgbboA9tqkP2PsyJZPI/Ibxmb68TsJTwuWM5kPSlBeusZGADncyghu7CK6wxa4hxrwA==}
+  '@lens-protocol/types@0.0.0-canary-20241226080441':
+    resolution: {integrity: sha512-3OTod3gl868u/sJCeOwx6OMU+e34C9JFlOVqiaGcLdHT5NxJ8NDnDSRWPiIG0OdeDJjXcHszZ+GxX4DVQ+BUKQ==}
 
   '@lerna/create@8.1.5':
     resolution: {integrity: sha512-Ku8yTGgeumayvMr8sml72EPb6WaoJhRjMTkMZrKSJtcLNDBlDpKwyUxDxNTBNBRUYWUuJCnj7eUH7pDNuc9odQ==}
@@ -23071,12 +23071,12 @@ snapshots:
       ethers: 6.13.4(bufferutil@4.0.8)(utf-8-validate@5.0.10)
       viem: 2.21.57(bufferutil@4.0.8)(typescript@5.6.3)(utf-8-validate@5.0.10)(zod@3.23.8)
 
-  '@lens-protocol/client@0.0.0-canary-20241224162155(@lens-network/sdk@0.0.0-canary-20241203140504(ethers@6.13.4(bufferutil@4.0.8)(utf-8-validate@5.0.10))(viem@2.21.57(bufferutil@4.0.8)(typescript@5.6.3)(utf-8-validate@5.0.10)(zod@3.23.8)))(ethers@6.13.4(bufferutil@4.0.8)(utf-8-validate@5.0.10))(graphql@16.10.0)(typescript@5.6.3)(viem@2.21.57(bufferutil@4.0.8)(typescript@5.6.3)(utf-8-validate@5.0.10)(zod@3.23.8))':
+  '@lens-protocol/client@0.0.0-canary-20241226080441(@lens-network/sdk@0.0.0-canary-20241203140504(ethers@6.13.4(bufferutil@4.0.8)(utf-8-validate@5.0.10))(viem@2.21.57(bufferutil@4.0.8)(typescript@5.6.3)(utf-8-validate@5.0.10)(zod@3.23.8)))(ethers@6.13.4(bufferutil@4.0.8)(utf-8-validate@5.0.10))(graphql@16.10.0)(typescript@5.6.3)(viem@2.21.57(bufferutil@4.0.8)(typescript@5.6.3)(utf-8-validate@5.0.10)(zod@3.23.8))':
     dependencies:
-      '@lens-protocol/env': 0.0.0-canary-20241224162155
-      '@lens-protocol/graphql': 0.0.0-canary-20241224162155(typescript@5.6.3)
-      '@lens-protocol/storage': 0.0.0-canary-20241224162155
-      '@lens-protocol/types': 0.0.0-canary-20241224162155
+      '@lens-protocol/env': 0.0.0-canary-20241226080441
+      '@lens-protocol/graphql': 0.0.0-canary-20241226080441(typescript@5.6.3)
+      '@lens-protocol/storage': 0.0.0-canary-20241226080441
+      '@lens-protocol/types': 0.0.0-canary-20241226080441
       '@urql/core': 5.1.0(graphql@16.10.0)
       '@urql/exchange-auth': 2.2.0(@urql/core@5.1.0(graphql@16.10.0))
       jwt-decode: 4.0.0
@@ -23091,13 +23091,13 @@ snapshots:
       - graphql
       - typescript
 
-  '@lens-protocol/env@0.0.0-canary-20241224162155':
+  '@lens-protocol/env@0.0.0-canary-20241226080441':
     dependencies:
-      '@lens-protocol/types': 0.0.0-canary-20241224162155
+      '@lens-protocol/types': 0.0.0-canary-20241226080441
 
-  '@lens-protocol/graphql@0.0.0-canary-20241224162155(typescript@5.6.3)':
+  '@lens-protocol/graphql@0.0.0-canary-20241226080441(typescript@5.6.3)':
     dependencies:
-      '@lens-protocol/types': 0.0.0-canary-20241224162155
+      '@lens-protocol/types': 0.0.0-canary-20241226080441
       gql.tada: 1.8.10(graphql@16.10.0)(typescript@5.6.3)
       graphql: 16.10.0
     transitivePeerDependencies:
@@ -23114,12 +23114,12 @@ snapshots:
 
   '@lens-protocol/storage-node-client@0.0.2': {}
 
-  '@lens-protocol/storage@0.0.0-canary-20241224162155':
+  '@lens-protocol/storage@0.0.0-canary-20241226080441':
     dependencies:
-      '@lens-protocol/types': 0.0.0-canary-20241224162155
+      '@lens-protocol/types': 0.0.0-canary-20241226080441
       zod: 3.23.8
 
-  '@lens-protocol/types@0.0.0-canary-20241224162155':
+  '@lens-protocol/types@0.0.0-canary-20241226080441':
     dependencies:
       neverthrow: 8.1.1
       type-fest: 4.30.2

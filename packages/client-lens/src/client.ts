@@ -19,18 +19,18 @@ import {
     post,
 } from "@lens-protocol/client/actions";
 import { UserAccount, operationResultType } from "./types";
-import { PrivateKeyAccount, Client } from "viem";
+import { PrivateKeyAccount, Client as WalletClient } from "viem";
 import { getProfilePictureUri, omit, handleTxnLifeCycle } from "./utils";
-import { parse } from "graphql";
+//import { parse } from "graphql";
 export class LensClient {
     runtime: IAgentRuntime;
     signer: PrivateKeyAccount;
-    walletClient: Client;
     cache: Map<string, any>;
-    lastInteractionTimestamp: Date;
-    sessionClient: SessionClient | null;
     accountAddress: EvmAddress;
     app: EvmAddress;
+    walletClient: WalletClient;
+    sessionClient: SessionClient | null;
+    lastInteractionTimestamp: Date;
 
     private authenticated: boolean;
     private authenticatedAccount: Account | null;
@@ -45,26 +45,26 @@ export class LensClient {
 
     constructor(opts: {
         runtime: IAgentRuntime;
-        cache: Map<string, any>;
         signer: PrivateKeyAccount;
+        cache: Map<string, any>;
         accountAddress: EvmAddress;
         app: EvmAddress;
-        walletClient: Client;
+        walletClient: WalletClient;
     }) {
-        this.cache = opts.cache;
         this.runtime = opts.runtime;
         this.signer = opts.signer;
+        this.cache = opts.cache;
+        this.accountAddress = opts.accountAddress;
+        this.app = opts.app;
+        this.walletClient = opts.walletClient;
         this.core = LensClientCore.create({
             environment: testnet,
             //origin: "https://myappdomain.xyz", // Ignored if running in a browser
         });
         this.lastInteractionTimestamp = new Date();
         this.authenticated = false;
-        this.accountAddress = opts.accountAddress;
-        this.app = opts.app;
         this.authenticatedAccount = null;
         this.sessionClient = null;
-        this.walletClient = opts.walletClient;
     }
 
     async authenticate(): Promise<void> {
@@ -269,56 +269,15 @@ export class LensClient {
             return this.cache.get(`lens/account/${handle}`) as UserAccount;
         }
 
-        // TODO: this is a temporary solution, we need account metadata from fetchAccount, as of now it is not returning metadata
-        const graphqlQuery = parse(`
-                query Account($request: AccountRequest!) {
-                            account(request: $request) {
-                                address
-                                metadata {
-                                    bio
-                                    coverPicture
-                                    id
-                                    name
-                                    picture
-                                    attributes {
-                                        type
-                                        key
-                                        value
-                                    }
-                                }
-                                username {
-                                    id
-                                    linkedTo
-                                    localName
-                                    namespace {
-                                        address
-                                        namespace
-                                        createdAt
-                                        metadata {
-                                            description
-                                            id
-                                        }
-                                        owner
-                                        stats {
-                                            totalUsernames
-                                        }
-                                    }
-                                    value
-                                    timestamp
-                                    ownedBy
-                                }
-                                score
-                            }
-                        }`);
-
-        const variables = {
-            handle: handle,
-        };
-
-        const result = await this.core.query(graphqlQuery, variables);
+        // Note: account.metadata might get removed in future
+        // TODO: handle namespace as well
+        const result = await fetchAccount(this.core, {
+            username: {
+                localName: handle,
+            },
+        });
         if (!result?.isOk) {
             elizaLogger.error("Error fetching user by account address");
-
             throw "getAccount ERROR";
         }
 
@@ -335,14 +294,14 @@ export class LensClient {
 
         elizaLogger.debug("gql query result", result);
         if (result.isOk()) {
-            const data = result.value as any;
-            account.usernameId = data.id;
-            account.address = data.address;
-            account.name = data.metadata?.name;
-            account.localName = data.handle?.localName;
-            account.bio = data.metadata?.bio;
-            account.picture = getProfilePictureUri(data.metadata?.picture);
-            account.cover = getProfilePictureUri(data.metadata?.coverPicture);
+            const data = result?.value;
+            account.usernameId = data?.username?.id;
+            account.address = data?.address;
+            account.name = data?.metadata?.name;
+            account.localName = data?.username?.localName;
+            account.bio = data?.metadata?.bio;
+            account.picture = getProfilePictureUri(data?.metadata?.picture);
+            account.cover = getProfilePictureUri(data?.metadata?.coverPicture);
         }
         this.cache.set(`lens/account/${handle}`, account);
 
