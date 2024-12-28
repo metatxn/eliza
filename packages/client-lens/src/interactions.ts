@@ -25,6 +25,7 @@ import { AnyPost, EvmAddress } from "@lens-protocol/client";
 
 import StorjProvider from "./providers/StorjProvider";
 import { UserAccount } from "./types";
+import { LensStorageClient } from "./providers/LensStorage";
 
 export class LensInteractionManager {
     private timeout: NodeJS.Timeout | undefined;
@@ -34,7 +35,7 @@ export class LensInteractionManager {
         // TODO: check for good var name and make it consistent throughout the codebase
         private smartAccountAddress: EvmAddress,
         public cache: Map<string, any>,
-        private ipfs: StorjProvider
+        private ipfs: typeof LensStorageClient
     ) {}
 
     public async start() {

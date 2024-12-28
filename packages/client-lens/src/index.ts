@@ -5,6 +5,7 @@ import { LensClient } from "./client";
 import { LensPostManager } from "./post";
 import { LensInteractionManager } from "./interactions";
 import StorjProvider from "./providers/StorjProvider";
+import { LensStorageClient } from "./providers/LensStorage";
 import { createWalletClient, http } from "viem";
 import { EvmAddress } from "@lens-protocol/client";
 
@@ -15,7 +16,7 @@ export class LensAgentClient implements Client {
 
     private accountAddress: EvmAddress;
     private app: EvmAddress;
-    private ipfs: StorjProvider;
+    private ipfs: typeof LensStorageClient;
 
     constructor(public runtime: IAgentRuntime) {
         const cache = new Map<string, any>();
@@ -52,7 +53,7 @@ export class LensAgentClient implements Client {
 
         elizaLogger.info("Lens client initialized.");
 
-        this.ipfs = new StorjProvider(runtime);
+        this.ipfs = LensStorageClient;
 
         elizaLogger.info("Storj provider initialized.");
 

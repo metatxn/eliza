@@ -13,6 +13,7 @@ import { createPostMemory } from "./memory";
 import { sendPost } from "./actions";
 import StorjProvider from "./providers/StorjProvider";
 import { EvmAddress } from "@lens-protocol/client";
+import { LensStorageClient } from "./providers/LensStorage";
 
 export class LensPostManager {
     private timeout: NodeJS.Timeout | undefined;
@@ -22,7 +23,7 @@ export class LensPostManager {
         public runtime: IAgentRuntime,
         private smartAccountAddress: EvmAddress,
         public cache: Map<string, any>,
-        private ipfs: StorjProvider
+        private ipfs: typeof LensStorageClient
     ) {}
 
     public async start() {
