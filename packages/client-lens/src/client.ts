@@ -21,7 +21,7 @@ import {
 } from "@lens-protocol/client/actions";
 import { UserAccount, operationResultType } from "./types";
 import { PrivateKeyAccount, Client as WalletClient } from "viem";
-import { getProfilePictureUri, omit, handleTxnLifeCycle } from "./utils";
+import { handleTxnLifeCycle } from "./utils";
 //import { parse } from "graphql";
 export class LensClient {
     runtime: IAgentRuntime;
@@ -169,32 +169,42 @@ export class LensClient {
             elizaLogger.info("Transaction hash received:", txnResult);
             elizaLogger.info("Transaction hash type:", typeof txnResult);
 
-            // we have to return the post object
-            //const txnResult ="0xf3bca99979e1eafcda89f3a3bf9f1127124567c65e1da40eac7671f6729a5564";
-            // when passing above txnResult, it is returning the post object but i have to comment out the above
-            // create post code first
+            // Add retry logic with delay
+            let viewPost: AnyPost | undefined;
+            let attempts = 0;
+            const maxAttempts = 5;
+            const delayMs = 5000; // 5 seconds
 
-            // Add validation for txnResult format
-            if (!txnResult || !txnResult.startsWith("0x")) {
-                elizaLogger.error(
-                    "Invalid transaction hash format:",
-                    txnResult
-                );
-                throw new Error("Invalid transaction hash received");
-            }
-            const postResponse = await fetchPost(this.sessionClient, {
-                txHash: txnResult,
-            });
-            // Add debug log for post response
-            elizaLogger.info("Post response:", postResponse);
-            if (postResponse.isOk()) {
-                const post = postResponse.value;
-                if (!post) {
-                    throw new Error("Post not found after creation");
+            while (!viewPost && attempts < maxAttempts) {
+                attempts++;
+                elizaLogger.info(`Attempt ${attempts} to fetch post...`);
+
+                const postResponse = await fetchPost(this.sessionClient, {
+                    txHash: txnResult,
+                });
+
+                if (postResponse.isOk() && postResponse.value) {
+                    viewPost = postResponse?.value;
+                    break;
                 }
-                return post;
+
+                if (attempts < maxAttempts) {
+                    elizaLogger.info(
+                        `Post not ready, waiting ${delayMs}ms before retry...`
+                    );
+                    await new Promise((resolve) =>
+                        setTimeout(resolve, delayMs)
+                    );
+                }
             }
-            throw new Error("Failed to fetch created post");
+
+            if (!viewPost) {
+                throw new Error(
+                    `Failed to fetch post after ${maxAttempts} attempts`
+                );
+            }
+
+            return viewPost;
         } catch (error) {
             elizaLogger.error("client-lens::create post error: ", error);
             throw error;

@@ -67,7 +67,7 @@ export class LensInteractionManager {
         const { mentions } = await this.client.getMentions();
 
         const agent = await this.client.getAccount(this.smartAccountAddress);
-        elizaLogger.info(`[Lens Client] User account: ${agent.name}`);
+        elizaLogger.info(`[Lens Client] agent account: ${agent.name}`);
         for (const mention of mentions) {
             elizaLogger.info("Handling mention", mention);
             const messageHash = toHex(mention?.id);
