@@ -11,7 +11,7 @@ import { formatTimeline, postTemplate } from "./prompts";
 import { postUuid } from "./utils";
 import { createPostMemory } from "./memory";
 import { sendPost } from "./actions";
-import StorjProvider from "./providers/StorjProvider";
+import { StorageProvider } from "./providers/StorageProvider";
 import { EvmAddress } from "@lens-protocol/client";
 
 export class LensPostManager {
@@ -22,7 +22,7 @@ export class LensPostManager {
         public runtime: IAgentRuntime,
         private smartAccountAddress: EvmAddress,
         public cache: Map<string, any>,
-        private ipfs: StorjProvider
+        private storage: StorageProvider
     ) {}
 
     public async start() {
@@ -114,7 +114,7 @@ export class LensPostManager {
                     runtime: this.runtime,
                     roomId: generateRoomId,
                     content: { text: content },
-                    ipfs: this.ipfs,
+                    storage: this.storage,
                 });
 
                 const post = response.post;

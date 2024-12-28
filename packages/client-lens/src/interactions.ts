@@ -23,7 +23,7 @@ import { postUuid } from "./utils";
 import { sendPost } from "./actions";
 import { AnyPost, EvmAddress } from "@lens-protocol/client";
 
-import StorjProvider from "./providers/StorjProvider";
+import { StorageProvider } from "./providers/StorageProvider";
 import { UserAccount } from "./types";
 
 export class LensInteractionManager {
@@ -34,7 +34,7 @@ export class LensInteractionManager {
         // TODO: check for good var name and make it consistent throughout the codebase
         private smartAccountAddress: EvmAddress,
         public cache: Map<string, any>,
-        private ipfs: StorjProvider
+        private storage: StorageProvider
     ) {}
 
     public async start() {
@@ -269,7 +269,7 @@ export class LensInteractionManager {
                     content: content,
                     roomId: memory.roomId,
                     commentOn: post.id,
-                    ipfs: this.ipfs,
+                    storage: this.storage,
                 });
                 if (!result?.post?.id) throw new Error("publication not sent");
 
