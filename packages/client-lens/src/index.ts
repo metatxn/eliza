@@ -54,6 +54,8 @@ export class LensAgentClient implements Client {
 
         this.ipfs = new StorjProvider(runtime);
 
+        elizaLogger.info("Storj provider initialized.");
+
         this.posts = new LensPostManager(
             this.client,
             this.runtime,

@@ -11,6 +11,7 @@ import {
     EvmAddress,
 } from "@lens-protocol/client";
 import {
+    currentSession,
     fetchAccount,
     fetchNotifications,
     fetchPost,
@@ -59,7 +60,9 @@ export class LensClient {
         this.walletClient = opts.walletClient;
         this.core = LensClientCore.create({
             environment: testnet,
-            //origin: "https://myappdomain.xyz", // Ignored if running in a browser
+            origin: "https://myappdomain.xyz", // Ignored if running in a browser
+            debug: true,
+            cache: true,
         });
         this.lastInteractionTimestamp = new Date();
         this.authenticated = false;
@@ -69,6 +72,7 @@ export class LensClient {
 
     async authenticate(): Promise<void> {
         try {
+            elizaLogger.info("Authenticating lens client");
             // to login We need to provide, Account's unique address, app address, instance of
             // user address made using PrivateKeyAccount.
 
@@ -113,6 +117,11 @@ export class LensClient {
 
     async createPost(contentUri: string, commentOn?: string): Promise<AnyPost> {
         try {
+            elizaLogger.info(
+                "Creating post via createPost...",
+                contentUri,
+                commentOn
+            );
             if (!this.authenticated || !this.sessionClient) {
                 await this.authenticate();
                 elizaLogger.log("done authenticating");
@@ -120,6 +129,7 @@ export class LensClient {
 
             // now that we are sure that we have authenticated, we can use sessionClient
             if (!this.sessionClient) {
+                elizaLogger.error("sessionClient is null after authentication");
                 throw new Error("sessionClient is null after authentication");
             }
 
@@ -243,6 +253,14 @@ export class LensClient {
                 timeBasedAggregation: false,
             },
         });
+
+        /**
+         * OUTPUT:
+         * fetchNotifications result
+            {"value":{"__typename":"PaginatedNotificationResult","items":[],
+            "pageInfo":{"__typename":"PaginatedResultInfo","prev":null,"next":null}}}
+         */
+        elizaLogger.info("fetchNotifications result", result);
         const mentions: AnyPost[] = [];
 
         const unwrappedResult = result.unwrapOr({ items: [], next: undefined });
@@ -250,8 +268,8 @@ export class LensClient {
         const next =
             "next" in unwrappedResult ? unwrappedResult?.next : undefined;
         items.map((notification) => {
-            // @ts-ignore NotificationFragment
-            const item = notification.publication || notification.comment;
+            const item = notification.post || notification.comment;
+            // TODO: isEncrypted is not available in lensV3
             if (!item.isEncrypted) {
                 mentions.push(item);
                 this.cache.set(`lens/post/${item.id}`, item);
@@ -264,17 +282,17 @@ export class LensClient {
     // @note: smartAccountAddress is the address of the lens-account. when username is created then
     // a smart account is created with the username and the address of the smart contract is the smartAccountAddress
     // In LensV3, everything is getting accumulated at this address.
-    async getAccount(handle: string): Promise<UserAccount> {
-        if (this.cache.has(`lens/account/${handle}`)) {
-            return this.cache.get(`lens/account/${handle}`) as UserAccount;
+    async getAccount(smartAccountAddress: EvmAddress): Promise<UserAccount> {
+        if (this.cache.has(`lens/account/${smartAccountAddress}`)) {
+            return this.cache.get(
+                `lens/account/${smartAccountAddress}`
+            ) as UserAccount;
         }
 
         // Note: account.metadata might get removed in future
         // TODO: handle namespace as well
         const result = await fetchAccount(this.core, {
-            username: {
-                localName: handle,
-            },
+            address: smartAccountAddress,
         });
         if (!result?.isOk) {
             elizaLogger.error("Error fetching user by account address");
@@ -300,54 +318,106 @@ export class LensClient {
             account.name = data?.metadata?.name;
             account.localName = data?.username?.localName;
             account.bio = data?.metadata?.bio;
-            account.picture = getProfilePictureUri(data?.metadata?.picture);
-            account.cover = getProfilePictureUri(data?.metadata?.coverPicture);
+            account.picture = data?.metadata?.picture;
+            account.cover = data?.metadata?.coverPicture;
         }
-        this.cache.set(`lens/account/${handle}`, account);
+        this.cache.set(`lens/account/${smartAccountAddress}`, account);
 
         return account;
     }
 
     async getTimeline(
-        userAddress: string,
+        userAddress: EvmAddress,
         limit: number = 10
     ): Promise<AnyPost[]> {
         try {
             if (!this.authenticated) {
                 await this.authenticate();
             }
+
             const timeline: AnyPost[] = [];
-            let next: any | undefined = undefined;
 
-            do {
-                const result = next
-                    ? await next()
-                    : await fetchTimeline(this.core, {
-                          account: userAddress,
-                          filter: {
-                              eventType: ["POST", "QUOTE"], // "COMMENT", "REPOST",
-                          },
-                      });
+            // Initial fetch outside the loop
+            const initialResult = await fetchTimeline(
+                this.core.currentSession,
+                {
+                    account: userAddress,
+                    // filter: {
+                    //     eventType: ["POST", "QUOTE"],
+                    // },
+                }
+            );
 
-                const data = result.unwrap();
+            if (!initialResult || initialResult.isErr()) {
+                elizaLogger.warn("Initial fetch returned null");
+                return timeline;
+            }
 
-                data.items.forEach((item) => {
-                    // private posts in orb clubs are encrypted: encrypted posts are not available as of now in lensV3
-                    if (
-                        timeline.length < limit // && !item?.primary?.isEncrypted
-                    ) {
-                        this.cache.set(`lens/post/${item.id}`, item.root);
-                        timeline.push(item.root as AnyPost);
+            let initialData;
+            if (initialResult.isOk()) {
+            }
+            initialData = initialResult.value;
+            if (!initialData || !initialData.items) {
+                elizaLogger.warn("Invalid data structure in initial fetch");
+                return timeline;
+            }
+
+            // Process initial items
+            for (const item of initialData.items) {
+                if (timeline.length >= limit) break;
+
+                if (!item || !item.root || !item.id) {
+                    elizaLogger.warn("Invalid item in timeline");
+                    continue;
+                }
+
+                const post = item.root as AnyPost;
+                this.cache.set(`lens/post/${item.id}`, post);
+                timeline.push(post);
+            }
+
+            // Only enter pagination loop if we need more items
+            let nextPage = initialData.pageInfo?.next;
+
+            while (nextPage && timeline.length < limit) {
+                try {
+                    const result = await nextPage();
+
+                    if (!result) break;
+
+                    const data = result.unwrap();
+                    if (!data || !data.items) break;
+
+                    for (const item of data.items) {
+                        if (timeline.length >= limit) break;
+
+                        if (!item || !item.root || !item.id) continue;
+
+                        const post = item.root as AnyPost;
+                        this.cache.set(`lens/post/${item.id}`, post);
+                        timeline.push(post);
                     }
-                });
 
-                next = data.pageInfo.next;
-            } while (next && timeline.length < limit);
+                    nextPage = data.pageInfo?.next;
+                } catch (paginationError) {
+                    elizaLogger.error("Error during pagination", {
+                        error: paginationError,
+                        currentLength: timeline.length,
+                    });
+                    break; // Exit loop but return what we have so far
+                }
+            }
 
             return timeline;
         } catch (error) {
-            console.log(error);
-            throw new Error("client-lens:: getTimeline");
+            elizaLogger.error("Failed to fetch timeline", {
+                error,
+                userAddress,
+                limit,
+            });
+            throw error instanceof Error
+                ? error
+                : new Error(`Failed to fetch timeline: ${error}`);
         }
     }
     /**

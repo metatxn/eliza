@@ -132,7 +132,7 @@ export const handlePostResult = (
 };
 
 export const getProfilePictureUri = (picture: any): string | undefined => {
-    if ("optimized" in picture) {
+    if (picture && "optimized" in picture) {
         return picture.optimized?.uri || picture.raw?.uri || picture.uri;
     } else {
         return picture.uri;

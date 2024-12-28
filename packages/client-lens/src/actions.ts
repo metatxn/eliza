@@ -30,6 +30,7 @@ export async function sendPost({
     const metadata = textOnly({ content: content.text });
     const contentURI = await ipfs.pinJson(metadata);
 
+    elizaLogger.info(`Content URI: ${contentURI}`);
     const post = await client.createPost(
         contentURI,
         // false, // TODO: support collectable settings

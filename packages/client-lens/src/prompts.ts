@@ -8,7 +8,7 @@ import { hasContent } from "./utils";
 
 export const formatPost = (post: AnyPost) => {
     return `ID: ${post.id}
- From: ${post.__typename === "Post" ? "Author Name" : "Unknown"} (@${post.__typename === "Post" ? post.author?.username?.localName : "Unknown"})${post.__typename === "Post" && post.commentOn ? `\nIn reply to: @${post.commentOn?.author?.username?.localName}` : ""}
+From: ${post.__typename === "Post" && post.author.metadata?.name} (@${post.__typename === "Post" && post?.author?.username?.localName})${post.__typename === "Post" && post?.author?.username?.localName})${post.__typename === "Post" && post.commentOn ? `\nIn reply to: @${post?.commentOn?.author?.username?.localName}` : ""}
 Text: ${post.__typename === "Post" && hasContent(post.metadata) ? post.metadata.content : "No content available"}`;
 };
 

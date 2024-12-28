@@ -53,6 +53,9 @@ export class LensPostManager {
             const userAccount = await this.client.getAccount(
                 this.smartAccountAddress
             );
+            elizaLogger.info(
+                `[Lens Client] User account: ${userAccount.localName}`
+            );
             await this.runtime.ensureUserExists(
                 this.runtime.agentId,
                 userAccount.localName!,
@@ -86,6 +89,7 @@ export class LensPostManager {
                 }
             );
 
+            // Generate new post
             const context = composeContext({
                 state,
                 template:

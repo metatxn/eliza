@@ -67,10 +67,12 @@ export class LensInteractionManager {
         const { mentions } = await this.client.getMentions();
 
         const agent = await this.client.getAccount(this.smartAccountAddress);
+        elizaLogger.info(`[Lens Client] User account: ${agent.name}`);
         for (const mention of mentions) {
-            elizaLogger.debug("Handling mention", mention);
-            const messageHash = toHex(mention.id);
+            elizaLogger.info("Handling mention", mention);
+            const messageHash = toHex(mention?.id);
             const conversationId = `${messageHash}-${this.runtime.agentId}`;
+            elizaLogger.info("conversationId", conversationId);
             let roomId, userId;
             if (mention.__typename === "Post") {
                 roomId = stringToUuid(conversationId);
@@ -136,6 +138,7 @@ export class LensInteractionManager {
         memory: Memory;
         thread: AnyPost[];
     }) {
+        elizaLogger.info("Handling publication", post.id);
         if (
             post.__typename === "Post" &&
             post?.author?.address === agent?.address
