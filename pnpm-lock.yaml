@@ -629,8 +629,8 @@ importers:
         specifier: 2.0.0-next.2
         version: 2.0.0-next.2(zod@3.23.8)
       '@lens-protocol/storage-node-client':
-        specifier: ^0.0.2
-        version: 0.0.2
+        specifier: 0.0.0-next-20241217195719
+        version: 0.0.0-next-20241217195719
       arweave:
         specifier: 1.15.5
         version: 1.15.5
@@ -4728,8 +4728,8 @@ packages:
       zod:
         optional: true
 
-  '@lens-protocol/storage-node-client@0.0.2':
-    resolution: {integrity: sha512-Miza+o4MMAiQZQ5wowthMjCv21fV94+3825r/E9Mh0lVEcj7RL0cgHWXAxEUQTko+lI6633EKPw4jjnpWzxvlw==}
+  '@lens-protocol/storage-node-client@0.0.0-next-20241217195719':
+    resolution: {integrity: sha512-jWonPI26JViuAN54rjhhpC1jw9bkSmjnY7xqYUEmwdza/P6Noh5GXQLaHvyi9QgrQ7RO8Iw7ObgcTK2oHD84MA==}
 
   '@lens-protocol/storage@0.0.0-canary-20241227112802':
     resolution: {integrity: sha512-FI4LN2XF9Nv4qBJF/EECskz78A9IP+c+KxTil0IebDrLW7tMPf5jXyRSEgPmE0eiHB7WFxBlWnfFo+tDDFSgbw==}
@@ -23125,7 +23125,7 @@ snapshots:
     optionalDependencies:
       zod: 3.23.8
 
-  '@lens-protocol/storage-node-client@0.0.2': {}
+  '@lens-protocol/storage-node-client@0.0.0-next-20241217195719': {}
 
   '@lens-protocol/storage@0.0.0-canary-20241227112802':
     dependencies:

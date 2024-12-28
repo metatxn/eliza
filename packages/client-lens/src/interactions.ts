@@ -213,7 +213,7 @@ export class LensInteractionManager {
                 })
             );
         }
-
+        // TODO: if its not a mention like @testbot then it won't comment
         const shouldRespondResponse = await generateShouldRespond({
             runtime: this.runtime,
             context: shouldRespondContext,

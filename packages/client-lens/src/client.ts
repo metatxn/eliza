@@ -110,7 +110,7 @@ export class LensClient {
                 throw new Error();
             }
         } catch (error) {
-            elizaLogger.error("client-lens::client error: ", error);
+            elizaLogger.error("client-lens:: auth error", error);
             throw error;
         }
     }
@@ -156,20 +156,37 @@ export class LensClient {
                     "Failed to comment" + postExecutionResult.error
                 );
             }
-            const postResult: operationResultType = postExecutionResult.value;
 
+            const postResult: operationResultType = postExecutionResult.value;
+            elizaLogger.info("Post execution result:", postResult);
             const txnResult: string = await handleTxnLifeCycle(
                 postResult,
                 this.walletClient,
                 this.signer
             );
 
-            elizaLogger.log("Transaction result: ", txnResult);
+            // Add debug logs
+            elizaLogger.info("Transaction hash received:", txnResult);
+            elizaLogger.info("Transaction hash type:", typeof txnResult);
 
             // we have to return the post object
-            const postResponse = await fetchPost(this.core, {
+            //const txnResult ="0xf3bca99979e1eafcda89f3a3bf9f1127124567c65e1da40eac7671f6729a5564";
+            // when passing above txnResult, it is returning the post object but i have to comment out the above
+            // create post code first
+
+            // Add validation for txnResult format
+            if (!txnResult || !txnResult.startsWith("0x")) {
+                elizaLogger.error(
+                    "Invalid transaction hash format:",
+                    txnResult
+                );
+                throw new Error("Invalid transaction hash received");
+            }
+            const postResponse = await fetchPost(this.sessionClient, {
                 txHash: txnResult,
             });
+            // Add debug log for post response
+            elizaLogger.info("Post response:", postResponse);
             if (postResponse.isOk()) {
                 const post = postResponse.value;
                 if (!post) {
@@ -179,7 +196,7 @@ export class LensClient {
             }
             throw new Error("Failed to fetch created post");
         } catch (error) {
-            elizaLogger.error("client-lens::client error: ", error);
+            elizaLogger.error("client-lens::create post error: ", error);
             throw error;
         }
     }
@@ -189,7 +206,18 @@ export class LensClient {
             return this.cache.get(`lens/post/${postId}`);
         }
 
-        const postResult = await fetchPost(this.core, { post: postId });
+        if (!this.authenticated || !this.sessionClient) {
+            await this.authenticate();
+            elizaLogger.log("done authenticating");
+        }
+
+        if (!this.sessionClient) {
+            elizaLogger.error("sessionClient is null");
+            throw new Error("sessionClient is null");
+        }
+        const postResult = await fetchPost(this.sessionClient, {
+            post: postId,
+        });
 
         if (postResult.isErr()) {
             console.error("Error fetching post", postResult.error);
