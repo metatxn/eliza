@@ -61,7 +61,7 @@ export class LensPostManager {
                 this.runtime.agentId,
                 userAccount.localName!,
                 this.runtime.character.name,
-                "lens" // TODO: this is a global namespace and in lensV3 it is represented by evm address
+                "lens" // TODO: this is a global namespace and in lensV3 it is represented by an evm address
             );
 
             const timeline = await this.client.getTimeline(

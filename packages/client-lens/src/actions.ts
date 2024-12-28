@@ -30,11 +30,12 @@ export async function sendPost({
     // TODO: arweave provider for content hosting
     const metadata = textOnly({ content: content.text });
 
-    const contentURI = await ipfs.(metadata);
-
-    elizaLogger.info(`Content URI: ${contentURI}`);
+    elizaLogger.info("Uploading content to IPFS", ipfs);
+    const { uri } = await ipfs.uploadAsJson(metadata);
+    console.log("Content uri: ", uri);
+    elizaLogger.info(`Content URI: ${uri}`);
     const post = await client.createPost(
-        contentURI,
+        uri,
         // false, // TODO: support collectable settings
         commentOn
     );
