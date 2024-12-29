@@ -6,7 +6,7 @@ import {
     type Memory,
     type UUID,
 } from "@elizaos/core";
-import { postUuid } from "./utils";
+import { hasContent, postUuid } from "./utils";
 import { LensClient } from "./client";
 import { AnyPost } from "@lens-protocol/client";
 
@@ -19,12 +19,15 @@ export function createPostMemory({
     runtime: IAgentRuntime;
     post: AnyPost;
 }): Memory {
-    const commentOn = post.id // TODO: check if this is correct
-        ? postUuid({
-              pubId: post.id,
-              agentId: runtime.agentId,
-          })
-        : undefined;
+    const commentOn =
+        post.__typename === "Post"
+            ? post.commentOn
+            : undefined // TODO: check if this is correct
+              ? postUuid({
+                    pubId: post.id,
+                    agentId: runtime.agentId,
+                })
+              : undefined;
 
     return {
         id: postUuid({
@@ -34,8 +37,11 @@ export function createPostMemory({
         agentId: runtime.agentId,
         userId: runtime.agentId,
         content: {
-            // text: publication.metadata.content,
-            text: "This is lens content",
+            text:
+                post.__typename === "Post" && hasContent(post.metadata)
+                    ? post.metadata.content
+                    : "Default content",
+            //text: "This is lens content",
             source: "lens",
             url: "",
             commentOn,
@@ -83,7 +89,8 @@ export async function buildConversationThread({
                     userId,
                     roomId,
                     currentPost?.author?.address,
-                    currentPost?.author?.username?.localName, // as of now, author metadata is not present in Post.author
+                    currentPost?.author?.metadata?.name ||
+                        currentPost?.author?.username?.localName,
                     "lens"
                 );
             } else {

@@ -298,7 +298,7 @@ export class LensClient {
             {"value":{"__typename":"PaginatedNotificationResult","items":[],
             "pageInfo":{"__typename":"PaginatedResultInfo","prev":null,"next":null}}}
          */
-        elizaLogger.info("fetchNotifications result", result);
+        elizaLogger.info("done fetching notifications...");
         const mentions: AnyPost[] = [];
 
         const unwrappedResult = result.unwrapOr({ items: [], next: undefined });
@@ -348,7 +348,6 @@ export class LensClient {
             cover: "",
         };
 
-        elizaLogger.debug("gql query result", result);
         if (result.isOk()) {
             const data = result?.value;
             account.usernameId = data?.username?.id;
@@ -373,21 +372,28 @@ export class LensClient {
                 await this.authenticate();
             }
 
+            if (!this.sessionClient) {
+                throw new Error("sessionClient is null after authentication");
+            }
+
             const timeline: AnyPost[] = [];
 
             // Initial fetch outside the loop
-            const initialResult = await fetchTimeline(
-                this.core.currentSession,
-                {
-                    account: userAddress,
-                    // filter: {
-                    //     eventType: ["POST", "QUOTE"],
-                    // },
-                }
-            );
+            // TODO: not working, returning `Unexpected error`
+            const initialResult = await fetchTimeline(this.sessionClient, {
+                account: userAddress,
+                // filter: {
+                //     eventType: ["POST", "QUOTE"],
+                // },
+            });
+
+            elizaLogger.info("Initial result data", initialResult);
 
             if (!initialResult || initialResult.isErr()) {
-                elizaLogger.warn("Initial fetch returned null");
+                elizaLogger.warn(
+                    "Initial fetch returned null",
+                    initialResult.error
+                );
                 return timeline;
             }
 
@@ -400,6 +406,7 @@ export class LensClient {
                 return timeline;
             }
 
+            elizaLogger.info("Initial fetch data", initialData);
             // Process initial items
             for (const item of initialData.items) {
                 if (timeline.length >= limit) break;
@@ -445,7 +452,6 @@ export class LensClient {
                     break; // Exit loop but return what we have so far
                 }
             }
-
             return timeline;
         } catch (error) {
             elizaLogger.error("Failed to fetch timeline", {
@@ -458,113 +464,4 @@ export class LensClient {
                 : new Error(`Failed to fetch timeline: ${error}`);
         }
     }
-    /**
-    private async createPostOnchain(
-        contentURI: string
-    ): Promise<BroadcastResult | undefined> {
-        // gasless + signless if they enabled the lens profile manager
-        if (this.authenticatedProfile?.signless) {
-            const broadcastResult = await this.core.publication.postOnchain({
-                contentURI,
-                openActionModules: [], // TODO: if collectable
-            });
-            return handleBroadcastResult(broadcastResult);
-        }
-
-        // gasless with signed type data
-        const typedDataResult =
-            await this.core.publication.createOnchainPostTypedData({
-                contentURI,
-                openActionModules: [], // TODO: if collectable
-            });
-        const { id, typedData } = typedDataResult.unwrap();
-
-        const signedTypedData = await this.account.signTypedData({
-            domain: omit(typedData.domain as any, "__typename"),
-            types: omit(typedData.types, "__typename"),
-            primaryType: "Post",
-            message: omit(typedData.value, "__typename"),
-        });
-
-        const broadcastResult = await this.core.transaction.broadcastOnchain({
-            id,
-            signature: signedTypedData,
-        });
-        return handleBroadcastResult(broadcastResult);
-    }
-
-    private async createCommentOnchain(
-        contentURI: string,
-        commentOn: string
-    ): Promise<BroadcastResult | undefined> {
-        // gasless + signless if they enabled the lens profile manager
-        if (this.authenticatedProfile?.signless) {
-            const broadcastResult = await this.core.publication.commentOnchain({
-                commentOn,
-                contentURI,
-            });
-            return handleBroadcastResult(broadcastResult);
-        }
-
-        // gasless with signed type data
-        const typedDataResult =
-            await this.core.publication.createOnchainCommentTypedData({
-                commentOn,
-                contentURI,
-            });
-
-        const { id, typedData } = typedDataResult.unwrap();
-
-        const signedTypedData = await this.account.signTypedData({
-            domain: omit(typedData.domain as any, "__typename"),
-            types: omit(typedData.types, "__typename"),
-            primaryType: "Comment",
-            message: omit(typedData.value, "__typename"),
-        });
-
-        const broadcastResult = await this.core.transaction.broadcastOnchain({
-            id,
-            signature: signedTypedData,
-        });
-        return handleBroadcastResult(broadcastResult);
-    }
-
-    private async createCommentMomoka(
-        contentURI: string,
-        commentOn: string
-    ): Promise<BroadcastResult | undefined> {
-        // gasless + signless if they enabled the lens profile manager
-        if (this.authenticatedProfile?.signless) {
-            const broadcastResult = await this.core.publication.commentOnMomoka(
-                {
-                    commentOn,
-                    contentURI,
-                }
-            );
-            return handleBroadcastResult(broadcastResult);
-        }
-
-        // gasless with signed type data
-        const typedDataResult =
-            await this.core.publication.createMomokaCommentTypedData({
-                commentOn,
-                contentURI,
-            });
-
-        const { id, typedData } = typedDataResult.unwrap();
-
-        const signedTypedData = await this.account.signTypedData({
-            domain: omit(typedData.domain as any, "__typename"),
-            types: omit(typedData.types, "__typename"),
-            primaryType: "Comment",
-            message: omit(typedData.value, "__typename"),
-        });
-
-        const broadcastResult = await this.core.transaction.broadcastOnMomoka({
-            id,
-            signature: signedTypedData,
-        });
-        return handleBroadcastResult(broadcastResult);
-    }
-         */
 }

@@ -19,7 +19,7 @@ import {
     messageHandlerTemplate,
     shouldRespondTemplate,
 } from "./prompts";
-import { postUuid } from "./utils";
+import { hasContent, postUuid } from "./utils";
 import { sendPost } from "./actions";
 import { AnyPost, EvmAddress } from "@lens-protocol/client";
 
@@ -69,7 +69,7 @@ export class LensInteractionManager {
         const agent = await this.client.getAccount(this.smartAccountAddress);
         elizaLogger.info(`[Lens Client] agent account: ${agent.name}`);
         for (const mention of mentions) {
-            elizaLogger.info("Handling mention", mention);
+            //elizaLogger.info("Handling mention", mention);
             const messageHash = toHex(mention?.id);
             const conversationId = `${messageHash}-${this.runtime.agentId}`;
             elizaLogger.info("conversationId", conversationId);
@@ -95,7 +95,8 @@ export class LensInteractionManager {
                     userId,
                     roomId,
                     mention.author.address,
-                    mention.author?.username?.localName, // as of now, author metadata is not present in Post.author
+                    mention.author.metadata?.name ||
+                        mention.author.username?.localName, // as of now, author metadata is not present in Post.author
                     "lens"
                 );
 
@@ -107,8 +108,9 @@ export class LensInteractionManager {
 
                 const memory: Memory = {
                     content: {
-                        // @ts-ignore metadata.content
-                        text: mention.metadata.content,
+                        text: hasContent(mention.metadata)
+                            ? mention.metadata.content
+                            : "Default content",
                         hash: mention.id,
                     },
                     agentId: this.runtime.agentId,
