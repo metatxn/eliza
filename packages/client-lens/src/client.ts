@@ -158,7 +158,7 @@ export class LensClient {
             }
 
             const postResult: operationResultType = postExecutionResult.value;
-            elizaLogger.info("Post execution result:", postResult);
+            elizaLogger.debug("Post execution result:", postResult);
             const txnResult: string = await handleTxnLifeCycle(
                 postResult,
                 this.walletClient,
@@ -166,8 +166,7 @@ export class LensClient {
             );
 
             // Add debug logs
-            elizaLogger.info("Transaction hash received:", txnResult);
-            elizaLogger.info("Transaction hash type:", typeof txnResult);
+            elizaLogger.debug("Transaction hash received:", txnResult);
 
             // Add retry logic with delay
             let viewPost: AnyPost | undefined;
@@ -379,15 +378,14 @@ export class LensClient {
             const timeline: AnyPost[] = [];
 
             // Initial fetch outside the loop
-            // TODO: not working, returning `Unexpected error`
             const initialResult = await fetchTimeline(this.sessionClient, {
                 account: userAddress,
-                // filter: {
-                //     eventType: ["POST", "QUOTE"],
-                // },
+                filter: {
+                    eventType: ["POST"],
+                },
             });
 
-            elizaLogger.info("Initial result data", initialResult);
+            //elizaLogger.info("Initial result data", initialResult);
 
             if (!initialResult || initialResult.isErr()) {
                 elizaLogger.warn(
@@ -399,25 +397,25 @@ export class LensClient {
 
             let initialData;
             if (initialResult.isOk()) {
+                initialData = initialResult.value;
             }
-            initialData = initialResult.value;
             if (!initialData || !initialData.items) {
                 elizaLogger.warn("Invalid data structure in initial fetch");
                 return timeline;
             }
 
-            elizaLogger.info("Initial fetch data", initialData);
+            //elizaLogger.info("Initial fetch data", initialData);
             // Process initial items
             for (const item of initialData.items) {
                 if (timeline.length >= limit) break;
 
-                if (!item || !item.root || !item.id) {
+                if (!item || !item.primary || !item.primary?.id) {
                     elizaLogger.warn("Invalid item in timeline");
                     continue;
                 }
 
-                const post = item.root as AnyPost;
-                this.cache.set(`lens/post/${item.id}`, post);
+                const post = item.primary as AnyPost;
+                this.cache.set(`lens/post/${item.primary?.id}`, post);
                 timeline.push(post);
             }
 
@@ -436,10 +434,11 @@ export class LensClient {
                     for (const item of data.items) {
                         if (timeline.length >= limit) break;
 
-                        if (!item || !item.root || !item.id) continue;
+                        if (!item || !item.primary || !item.primary.id)
+                            continue;
 
-                        const post = item.root as AnyPost;
-                        this.cache.set(`lens/post/${item.id}`, post);
+                        const post = item.primary as AnyPost;
+                        this.cache.set(`lens/post/${item.primary.id}`, post);
                         timeline.push(post);
                     }
 

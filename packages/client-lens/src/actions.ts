@@ -39,7 +39,7 @@ export async function sendPost({
         throw e;
     }
 
-    elizaLogger.info(`Content URI: ${contentURI}`);
+    //elizaLogger.info(`Content URI: ${contentURI}`);
     const post = await client.createPost(
         contentURI,
         // false, // TODO: support collectable settings

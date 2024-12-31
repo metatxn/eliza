@@ -145,10 +145,10 @@ export class LensPostManager {
                     })
                 );
             } catch (error) {
-                elizaLogger.error("Error sending publication:", error);
+                elizaLogger.error("Error sending post:", error);
             }
         } catch (error) {
-            elizaLogger.error("Error generating new publication:", error);
+            elizaLogger.error("Error generating new post:", error);
         }
     }
 }

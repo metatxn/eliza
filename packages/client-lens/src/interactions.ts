@@ -117,7 +117,7 @@ export class LensInteractionManager {
                     userId,
                     roomId,
                 };
-                await this.handlePublication({
+                await this.handlePost({
                     agent,
                     post: mention,
                     memory,
@@ -129,7 +129,7 @@ export class LensInteractionManager {
         this.client.lastInteractionTimestamp = new Date();
     }
 
-    private async handlePublication({
+    private async handlePost({
         agent,
         post,
         memory,
@@ -140,7 +140,7 @@ export class LensInteractionManager {
         memory: Memory;
         thread: AnyPost[];
     }) {
-        elizaLogger.info("Handling publication", post.id);
+        elizaLogger.info("Handling post...", memory);
         if (
             post.__typename === "Post" &&
             post?.author?.address === agent?.address
@@ -183,6 +183,7 @@ export class LensInteractionManager {
             .filter(Boolean)
             .join("\n\n");
 
+        // Compose initial state
         const state = await this.runtime.composeState(memory, {
             lensHandle: agent.localName,
             timeline: formattedTimeline,
@@ -194,7 +195,7 @@ export class LensInteractionManager {
             state,
             template:
                 this.runtime.character.templates?.lensShouldRespondTemplate ||
-                this.runtime.character?.templates?.shouldRespondTemplate ||
+                this.runtime.character.templates?.shouldRespondTemplate ||
                 shouldRespondTemplate,
         });
 
@@ -215,7 +216,7 @@ export class LensInteractionManager {
                 })
             );
         }
-        // TODO: if its not a mention like @testbot then it won't comment
+
         const shouldRespondResponse = await generateShouldRespond({
             runtime: this.runtime,
             context: shouldRespondContext,
@@ -227,7 +228,7 @@ export class LensInteractionManager {
             shouldRespondResponse === "STOP"
         ) {
             elizaLogger.info(
-                `Not responding to publication because generated ShouldRespond was ${shouldRespondResponse}`
+                `Not responding to post because generated ShouldRespond was ${shouldRespondResponse}`
             );
             return;
         }
@@ -243,10 +244,14 @@ export class LensInteractionManager {
         const responseContent = await generateMessageResponse({
             runtime: this.runtime,
             context,
-            modelClass: ModelClass.LARGE,
+            modelClass: ModelClass.SMALL,
         });
 
+        /** UUID of parent message if this is a reply/thread */
         responseContent.inReplyTo = memoryId;
+        responseContent.action = shouldRespondResponse ?? undefined;
+
+        //elizaLogger.debug("Generated response", responseContent);
 
         if (!responseContent.text) return;
 
