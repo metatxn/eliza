@@ -26,29 +26,29 @@ export class LensPostManager {
     ) {}
 
     public async start() {
-        const generateNewPubLoop = async () => {
+        const generateNewPostLoop = async () => {
             try {
-                await this.generateNewPublication();
+                await this.generateNewPost();
             } catch (error) {
                 elizaLogger.error(error);
                 return;
             }
 
             this.timeout = setTimeout(
-                generateNewPubLoop,
+                generateNewPostLoop,
                 (Math.floor(Math.random() * (4 - 1 + 1)) + 1) * 60 * 60 * 1000
             ); // Random interval between 1 and 4 hours
         };
 
-        generateNewPubLoop();
+        generateNewPostLoop();
     }
 
     public async stop() {
         if (this.timeout) clearTimeout(this.timeout);
     }
 
-    private async generateNewPublication() {
-        elizaLogger.info("Generating new publication");
+    private async generateNewPost() {
+        elizaLogger.info("Generating new post");
         try {
             const userAccount = await this.client.getAccount(
                 this.smartAccountAddress
@@ -135,7 +135,7 @@ export class LensPostManager {
                     roomId
                 );
 
-                elizaLogger.info(`[Lens Client] Published ${post.id}`);
+                elizaLogger.info(`[Lens Client] Posted ${post.id}`);
 
                 await this.runtime.messageManager.createMemory(
                     createPostMemory({

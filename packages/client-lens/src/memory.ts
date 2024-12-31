@@ -80,7 +80,7 @@ export async function buildConversationThread({
         const memory = await runtime.messageManager.getMemoryById(roomId);
 
         if (!memory) {
-            elizaLogger.log("Creating memory for publication", currentPost.id);
+            elizaLogger.log("Creating memory for post", currentPost.id);
 
             const userId = stringToUuid("12");
 

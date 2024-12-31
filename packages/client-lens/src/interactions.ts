@@ -140,7 +140,9 @@ export class LensInteractionManager {
         memory: Memory;
         thread: AnyPost[];
     }) {
-        elizaLogger.info("Handling post...", memory);
+        elizaLogger.debug("Handling post with post: ", post);
+        elizaLogger.debug("Handling post with memory: ", memory);
+        // skip the response if the post is from the bot itself
         if (
             post.__typename === "Post" &&
             post?.author?.address === agent?.address
@@ -149,6 +151,7 @@ export class LensInteractionManager {
             return;
         }
 
+        // skip the response if the post has no text
         if (!memory.content.text) {
             elizaLogger.info("skipping cast with no text", post?.id);
             return { text: "", action: "IGNORE" };
@@ -251,13 +254,13 @@ export class LensInteractionManager {
         responseContent.inReplyTo = memoryId;
         responseContent.action = shouldRespondResponse ?? undefined;
 
-        //elizaLogger.debug("Generated response", responseContent);
+        elizaLogger.debug("Generated response", responseContent);
 
         if (!responseContent.text) return;
 
         if (this.runtime.getSetting("LENS_DRY_RUN") === "true") {
             elizaLogger.info(
-                `Dry run: would have responded to publication ${post.id} with ${responseContent.text}`
+                `Dry run: would have responded to post ${post.id} with ${responseContent.text}`
             );
             return;
         }
@@ -278,15 +281,15 @@ export class LensInteractionManager {
                     commentOn: post.id,
                     storage: this.storage,
                 });
-                if (!result?.post?.id) throw new Error("publication not sent");
+                if (!result?.post?.id) throw new Error("post not sent");
 
-                // sendPublication lost response action, so we need to add it back here?
+                // sendPost lost response action, so we need to add it back here?
                 result.memory!.content.action = content.action;
 
                 await this.runtime.messageManager.createMemory(result.memory!);
                 return [result.memory!];
             } catch (error) {
-                console.error("Error sending response cast:", error);
+                console.error("Error sending response post:", error);
                 return [];
             }
         };
