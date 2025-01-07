@@ -43,6 +43,7 @@ import {
     webhookPlugin,
 } from "@elizaos/plugin-coinbase";
 import { confluxPlugin } from "@elizaos/plugin-conflux";
+import { lensNetworkPlugin } from "@elizaos/plugin-lens-network";
 import { evmPlugin } from "@elizaos/plugin-evm";
 import { storyPlugin } from "@elizaos/plugin-story";
 import { flowPlugin } from "@elizaos/plugin-flow";
@@ -424,7 +425,7 @@ export async function initializeClients(
             clients.farcaster = farcasterClient;
         }
     }
-    if (clientTypes.includes("lens")) {
+    if (clientTypes.includes(Clients.LENS)) {
         const lensClient = new LensAgentClient(runtime);
         lensClient.start();
         clients.lens = lensClient;
@@ -580,6 +581,9 @@ export async function createAgent(
                 ? webhookPlugin
                 : null,
             getSecret(character, "EVM_PROVIDER_URL") ? goatPlugin : null,
+            getSecret(character, "LENS_NETWORK_PRIVATE_KEY")
+                ? lensNetworkPlugin
+                : null,
             getSecret(character, "ABSTRACT_PRIVATE_KEY")
                 ? abstractPlugin
                 : null,

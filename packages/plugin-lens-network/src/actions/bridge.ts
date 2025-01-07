@@ -1,7 +1,8 @@
 import type { IAgentRuntime, Memory, State } from "@elizaos/core";
 import {
     composeContext,
-    generateObjectDeprecated,
+    elizaLogger,
+    generateObject,
     ModelClass,
 } from "@elizaos/core";
 import {
@@ -10,7 +11,7 @@ import {
     ExtendedChain,
     getRoutes,
 } from "@lifi/sdk";
-
+import { bridgeParamsSchema } from "../utils/schemas";
 import { initWalletProvider, WalletProvider } from "../providers/wallet";
 import { bridgeTemplate } from "../templates";
 import type { BridgeParams, Transaction } from "../types";
@@ -105,17 +106,23 @@ export const bridgeAction = {
             state,
             template: bridgeTemplate,
         });
-        const content = await generateObjectDeprecated({
+        const response = await generateObject({
             runtime,
             context: bridgeContext,
             modelClass: ModelClass.LARGE,
+            schema: bridgeParamsSchema,
+            schemaName: "BridgeParams",
+            schemaDescription: "Parameters for bridging tokens between chains",
         });
 
+        const content = response.object as unknown as BridgeParams;
+
+        elizaLogger.debug("content in bridge: ", content);
         const bridgeOptions: BridgeParams = {
             fromChain: content.fromChain,
             toChain: content.toChain,
-            fromToken: content.token,
-            toToken: content.token,
+            fromToken: content.fromToken,
+            toToken: content.toToken,
             toAddress: content.toAddress,
             amount: content.amount,
         };

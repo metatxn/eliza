@@ -68,7 +68,7 @@ export class WalletProvider {
     getWalletClient(chainName: SupportedChain): WalletClient {
         elizaLogger.debug("getWalletClient", chainName);
         const transport = this.createHttpTransport(chainName);
-
+        elizaLogger.debug("getWalletClient transport: ", transport);
         const walletClient = createWalletClient({
             chain: this.chains[chainName],
             transport,
@@ -150,11 +150,11 @@ export class WalletProvider {
 
     private createHttpTransport = (chainName: SupportedChain) => {
         const chain = this.chains[chainName];
-
-        if (chain.rpcUrls.custom) {
-            return http(chain.rpcUrls.custom.http[0]);
+        elizaLogger.debug("in createTransport and chain is: ", chain);
+        if (chain?.rpcUrls?.custom) {
+            return http(chain.rpcUrls.custom?.http[0]);
         }
-        return http(chain.rpcUrls.default.http[0]);
+        return http(chain?.rpcUrls?.default?.http[0]);
     };
 
     static genChainFromName(
@@ -186,6 +186,8 @@ export class WalletProvider {
 const genChainsFromRuntime = (
     runtime: IAgentRuntime
 ): Record<string, Chain> => {
+    // Add debug logging
+    console.log("Runtime settings:", runtime.character.settings);
     const chainNames =
         (runtime.character.settings.chains?.evm as SupportedChain[]) || [];
     const chains = {};
@@ -218,7 +220,9 @@ export const initWalletProvider = (runtime: IAgentRuntime) => {
 
     const chains = genChainsFromRuntime(runtime);
 
-    return new WalletProvider(privateKey as `0x${string}`, chains);
+    elizaLogger.debug("chain in initWallet: ", chains);
+
+    return new WalletProvider(privateKey as Hex, chains);
 };
 
 export const evmWalletProvider: Provider = {

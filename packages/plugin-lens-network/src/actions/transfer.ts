@@ -1,6 +1,7 @@
 import { ByteArray, formatEther, parseEther, type Hex } from "viem";
 import {
     composeContext,
+    elizaLogger,
     generateObject,
     HandlerCallback,
     ModelClass,
@@ -12,7 +13,7 @@ import {
 import { initWalletProvider, WalletProvider } from "../providers/wallet";
 import type { Transaction, TransferParams } from "../types";
 import { transferTemplate } from "../templates";
-
+import { transferParamsSchema } from "../utils/schemas";
 export { transferTemplate };
 
 // Exported for tests
@@ -28,6 +29,7 @@ export class TransferAction {
             params.data = "0x";
         }
 
+        elizaLogger.debug("fromchain in transfer: ", params.fromChain);
         this.walletProvider.switchChain(params.fromChain);
 
         const walletClient = this.walletProvider.getWalletClient(
@@ -78,18 +80,30 @@ const buildTransferDetails = async (
     });
 
     const chains = Object.keys(wp.chains);
+    elizaLogger.debug("chains in transfer: ", chains);
 
     const contextWithChains = context.replace(
         "SUPPORTED_CHAINS",
         chains.map((item) => `"${item}"`).join("|")
     );
 
-    const transferDetails = (await generateObject({
+    const response = await generateObject({
         runtime,
         context: contextWithChains,
         modelClass: ModelClass.SMALL,
-    })) as unknown as TransferParams;
+        schema: transferParamsSchema,
+        schemaName: "TransferParams",
+        schemaDescription:
+            "Parameters for token transfer between addresses on the same chain",
+    });
 
+    const transferDetails = response.object as unknown as TransferParams;
+
+    elizaLogger.debug("fromChain:", transferDetails.fromChain); // Verify exact value including type
+    elizaLogger.debug(
+        "existing chain lookup:",
+        wp.chains[transferDetails.fromChain]
+    ); // See what lookup returns
     const existingChain = wp.chains[transferDetails.fromChain];
 
     if (!existingChain) {
@@ -124,6 +138,8 @@ export const transferAction = {
             runtime,
             walletProvider
         );
+
+        elizaLogger.debug("paramsOption in transfer: ", paramOptions);
 
         try {
             const transferResp = await action.transfer(paramOptions);

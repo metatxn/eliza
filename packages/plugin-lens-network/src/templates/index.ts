@@ -64,8 +64,8 @@ Respond with a JSON markdown block containing only the extracted values. Use nul
 
 \`\`\`json
 {
-    "inputToken": string | null,
-    "outputToken": string | null,
+    "fromToken": string | null,
+    "toToken": string | null,
     "amount": string | null,
     "chain": "lens-network | ethereum" | "abstract" | "base" | "sepolia" | "bsc" | "arbitrum" | "avalanche" | "polygon" | "optimism" | "cronos" | "gnosis" | "fantom" | "klaytn" | "celo" | "moonbeam" | "aurora" | "harmonyOne" | "moonriver" | "arbitrumNova" | "mantle" | "linea" | "scroll" | "filecoin" | "taiko" | "zksync" | "canto" | "alienx" | null,
     "slippage": number | null

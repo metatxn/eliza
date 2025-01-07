@@ -1,7 +1,8 @@
 import type { IAgentRuntime, Memory, State } from "@elizaos/core";
 import {
     composeContext,
-    generateObjectDeprecated,
+    elizaLogger,
+    generateObject,
     ModelClass,
 } from "@elizaos/core";
 import {
@@ -15,6 +16,7 @@ import { initWalletProvider, WalletProvider } from "../providers/wallet";
 import { swapTemplate } from "../templates";
 import type { SwapParams, Transaction } from "../types";
 import { parseEther } from "viem";
+import { swapParamsSchema } from "../utils/schemas";
 
 export { swapTemplate };
 
@@ -25,33 +27,33 @@ export class SwapAction {
         this.config = createConfig({
             integrator: "eliza",
             chains: Object.values(this.walletProvider.chains).map((config) => ({
-                id: config.id,
-                name: config.name,
-                key: config.name.toLowerCase(),
+                id: config?.id,
+                name: config?.name,
+                key: config?.name.toLowerCase(),
                 chainType: "EVM" as const,
                 nativeToken: {
-                    ...config.nativeCurrency,
-                    chainId: config.id,
+                    ...config?.nativeCurrency,
+                    chainId: config?.id,
                     address: "0x0000000000000000000000000000000000000000",
-                    coinKey: config.nativeCurrency.symbol,
+                    coinKey: config?.nativeCurrency.symbol,
                     priceUSD: "0",
                     logoURI: "",
-                    symbol: config.nativeCurrency.symbol,
-                    decimals: config.nativeCurrency.decimals,
-                    name: config.nativeCurrency.name,
+                    symbol: config?.nativeCurrency.symbol,
+                    decimals: config?.nativeCurrency.decimals,
+                    name: config?.nativeCurrency.name,
                 },
                 rpcUrls: {
-                    public: { http: [config.rpcUrls.default.http[0]] },
+                    public: { http: [config?.rpcUrls?.default?.http[0]] },
                 },
-                blockExplorerUrls: [config.blockExplorers.default.url],
+                blockExplorerUrls: [config?.blockExplorers?.default?.url],
                 metamask: {
-                    chainId: `0x${config.id.toString(16)}`,
-                    chainName: config.name,
-                    nativeCurrency: config.nativeCurrency,
-                    rpcUrls: [config.rpcUrls.default.http[0]],
-                    blockExplorerUrls: [config.blockExplorers.default.url],
+                    chainId: `0x${config?.id.toString(16)}`,
+                    chainName: config?.name,
+                    nativeCurrency: config?.nativeCurrency,
+                    rpcUrls: [config?.rpcUrls?.default?.http[0]],
+                    blockExplorerUrls: [config?.blockExplorers?.default?.url],
                 },
-                coin: config.nativeCurrency.symbol,
+                coin: config?.nativeCurrency?.symbol,
                 mainnet: true,
                 diamondAddress: "0x0000000000000000000000000000000000000000",
             })) as ExtendedChain[],
@@ -74,6 +76,8 @@ export class SwapAction {
                 order: "RECOMMENDED",
             },
         });
+
+        elizaLogger.debug("routes in swap: ", routes);
 
         if (!routes.routes.length) throw new Error("No routes found");
 
@@ -108,25 +112,37 @@ export const swapAction = {
     ) => {
         console.log("Swap action handler called");
         const walletProvider = initWalletProvider(runtime);
+
         const action = new SwapAction(walletProvider);
+
+        elizaLogger.debug("action in swap: ", action);
 
         // Compose swap context
         const swapContext = composeContext({
             state,
             template: swapTemplate,
         });
-        const content = await generateObjectDeprecated({
+        const response = await generateObject({
             runtime,
             context: swapContext,
             modelClass: ModelClass.LARGE,
+            schema: swapParamsSchema,
+            schemaName: "SwapParams",
+            schemaDescription:
+                "Parameters for swapping tokens on the same chain",
         });
 
+        elizaLogger.debug("response in swap action: ", response);
+        const content = response.object as unknown as SwapParams;
+
+        elizaLogger.debug("content in swap: ", content);
+        // Transform the properties to match what's expected
         const swapOptions: SwapParams = {
             chain: content.chain,
-            fromToken: content.inputToken,
-            toToken: content.outputToken,
+            fromToken: content.fromToken, // Map inputToken to fromToken
+            toToken: content.toToken, // Map outputToken to toToken
             amount: content.amount,
-            slippage: content.slippage,
+            slippage: content.slippage || 0.5, // Provide default if null
         };
 
         try {
