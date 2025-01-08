@@ -68,7 +68,6 @@ export class WalletProvider {
     getWalletClient(chainName: SupportedChain): WalletClient {
         elizaLogger.debug("getWalletClient", chainName);
         const transport = this.createHttpTransport(chainName);
-        elizaLogger.debug("getWalletClient transport: ", transport);
         const walletClient = createWalletClient({
             chain: this.chains[chainName],
             transport,
@@ -79,7 +78,12 @@ export class WalletProvider {
     }
 
     getChainConfigs(chainName: SupportedChain): Chain {
-        const chain = viemChains[chainName];
+        let chain = viemChains[chainName];
+
+        // If not found in viemChains, check in lensChains
+        if (!chain?.id) {
+            chain = lensChains[chainName];
+        }
 
         if (!chain?.id) {
             throw new Error("Invalid chain name");

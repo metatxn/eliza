@@ -115,7 +115,7 @@ export const swapAction = {
 
         const action = new SwapAction(walletProvider);
 
-        elizaLogger.debug("action in swap: ", action);
+        //elizaLogger.debug("action in swap: ", action);
 
         // Compose swap context
         const swapContext = composeContext({
@@ -138,7 +138,10 @@ export const swapAction = {
         elizaLogger.debug("content in swap: ", content);
         // Transform the properties to match what's expected
         const swapOptions: SwapParams = {
-            chain: content.chain,
+            chain:
+                (content.chain as string) === "lens-network"
+                    ? "testnet"
+                    : content.chain, // Add this mapping,
             fromToken: content.fromToken, // Map inputToken to fromToken
             toToken: content.toToken, // Map outputToken to toToken
             amount: content.amount,
