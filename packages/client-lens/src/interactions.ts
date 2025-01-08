@@ -28,6 +28,7 @@ import { UserAccount } from "./types";
 
 export class LensInteractionManager {
     private timeout: NodeJS.Timeout | undefined;
+    private startupTime: Date;
     constructor(
         public client: LensClient,
         public runtime: IAgentRuntime,
@@ -35,7 +36,9 @@ export class LensInteractionManager {
         private smartAccountAddress: EvmAddress,
         public cache: Map<string, any>,
         private storage: StorageProvider
-    ) {}
+    ) {
+        this.startupTime = new Date();
+    }
 
     public async start() {
         const handleInteractionsLoop = async () => {
@@ -142,6 +145,16 @@ export class LensInteractionManager {
     }) {
         elizaLogger.debug("Handling post with post: ", post);
         elizaLogger.debug("Handling post with memory: ", memory);
+
+        // Skip if post is older than startup time
+        if (
+            post.__typename === "Post" &&
+            new Date(post.timestamp) < this.startupTime
+        ) {
+            elizaLogger.info(`Skipping old post from ${post.timestamp}`);
+            return;
+        }
+
         // skip the response if the post is from the bot itself
         if (
             post.__typename === "Post" &&

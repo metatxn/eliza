@@ -27,10 +27,10 @@ export class LensAgentClient implements Client {
         const cache = new Map<string, any>();
 
         const privateKey = runtime.getSetting(
-            "EVM_PRIVATE_KEY"
+            "LENS_NETWORK_PRIVATE_KEY"
         ) as `0x${string}`;
         if (!privateKey) {
-            throw new Error("EVM_PRIVATE_KEY is missing");
+            throw new Error("LENS_NETWORK_PRIVATE_KEY is missing");
         }
         const signer = privateKeyToAccount(privateKey);
 

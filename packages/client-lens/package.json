@@ -11,7 +11,7 @@
         "@lens-protocol/metadata": "2.0.0-next.2",
         "@lens-protocol/storage-node-client": "0.0.0-next-20241217195719",
         "axios": "^1.7.9",
-        "viem": "^2.21.57",
+        "viem": "^2.21.58",
         "arweave": "1.15.5"
     },
     "devDependencies": {
