@@ -13,6 +13,7 @@ import { PinataProvider } from "./providers/PinataProvider";
 import { ArweaveProvider } from "./providers/ArweaveProvider";
 import { createWalletClient, http } from "viem";
 import { EvmAddress } from "@lens-protocol/client";
+import { LensStorageProvider } from "./providers/LensStorageProvider";
 
 export class LensAgentClient implements Client {
     client: LensClient;
@@ -27,10 +28,10 @@ export class LensAgentClient implements Client {
         const cache = new Map<string, any>();
 
         const privateKey = runtime.getSetting(
-            "EVM_PRIVATE_KEY"
+            "LENS_NETWORK_PRIVATE_KEY"
         ) as `0x${string}`;
         if (!privateKey) {
-            throw new Error("EVM_PRIVATE_KEY is missing");
+            throw new Error("LENS_NETWORK_PRIVATE_KEY is missing");
         }
         const signer = privateKeyToAccount(privateKey);
 
@@ -87,6 +88,7 @@ export class LensAgentClient implements Client {
             [StorageProviderEnum.PINATA]: PinataProvider,
             [StorageProviderEnum.STORJ]: StorjProvider,
             [StorageProviderEnum.ARWEAVE]: ArweaveProvider,
+            [StorageProviderEnum.LENS]: LensStorageProvider,
         };
 
         let SelectedProvider =
