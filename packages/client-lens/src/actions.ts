@@ -26,11 +26,12 @@ export async function sendPost({
     commentOn?: string;
     storage: StorageProvider;
 }): Promise<{ memory?: Memory; post?: AnyPost }> {
-    // TODO: arweave provider for content hosting
     const metadata = textOnly({ content: content.text });
     let contentURI;
     try {
+        elizaLogger.debug("post metadata: ", metadata);
         const response = await storage.uploadJson(metadata);
+        elizaLogger.debug(" storage response: ", response);
         contentURI = response.url;
     } catch (e) {
         elizaLogger.warn(
@@ -41,7 +42,7 @@ export async function sendPost({
 
     //elizaLogger.info(`Content URI: ${contentURI}`);
     const post = await client.createPost(
-        uri,
+        contentURI,
         // false, // TODO: support collectable settings
         commentOn
     );
