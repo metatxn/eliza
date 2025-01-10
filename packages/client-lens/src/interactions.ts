@@ -25,7 +25,6 @@ import { AnyPost, EvmAddress } from "@lens-protocol/client";
 
 import { StorageProvider } from "./providers/StorageProvider";
 import { UserAccount } from "./types";
-import { LensStorageClient } from "./providers/LensStorage";
 
 export class LensInteractionManager {
     private timeout: NodeJS.Timeout | undefined;

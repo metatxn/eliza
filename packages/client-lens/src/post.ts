@@ -13,7 +13,6 @@ import { createPostMemory } from "./memory";
 import { sendPost } from "./actions";
 import { StorageProvider } from "./providers/StorageProvider";
 import { EvmAddress } from "@lens-protocol/client";
-import { LensStorageClient } from "./providers/LensStorage";
 
 export class LensPostManager {
     private timeout: NodeJS.Timeout | undefined;

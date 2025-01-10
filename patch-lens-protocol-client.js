@@ -34,9 +34,9 @@ const main = () => {
     {
       filePath: './node_modules/@lens-protocol/client/dist/index.js',
       replacements: [
-        {
-          searchValue: /import\s*\{\s*ResultAwareError,\s*okAsync,\s*ResultAsync,\s*errAsync,\s*signatureFrom,\s*err,\s*ok,\s*never,\s*invariant\s*\}\s*from\s*'@lens-protocol\/types';/g,
-          replaceValue: `import { ResultAwareError, okAsync, ResultAsync, errAsync, signatureFrom, err, ok, never, invariant } from '@lens-protocol/types/dist/index';`,
+        { // ResultAwareError, err, ok, never, okAsync, ResultAsync, errAsync, signatureFrom, invariant
+            searchValue: /import\s*\{\s*ResultAwareError,\s*err,\s*ok,\s*never,\s*okAsync,\s*ResultAsync,\s*errAsync,\s*signatureFrom,\s*invariant\s*\}\s*from\s*'@lens-protocol\/types';/g,
+            replaceValue: `import { ResultAwareError, err, ok, never, okAsync, ResultAsync, errAsync, signatureFrom, invariant } from '@lens-protocol/types/dist/index';`,
         },
         {
           searchValue: /export\s*\*\s*from\s*'@lens-protocol\/types';/g,
