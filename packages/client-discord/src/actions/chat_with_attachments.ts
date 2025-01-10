@@ -190,15 +190,16 @@ const summarizeAction = {
 
         state.attachmentsWithText = attachmentsWithText;
         state.objective = objective;
-
+        const template = await trimTokens(
+            summarizationTemplate,
+            chunkSize + 500,
+            runtime
+        );
         const context = composeContext({
             state,
             // make sure it fits, we can pad the tokens a bit
-            template: trimTokens(
-                summarizationTemplate,
-                chunkSize + 500,
-                "gpt-4o-mini" // TODO: make this dynamic and generic
-            ),
+            // Get the model's tokenizer based on the current model being used
+            template,
         });
 
         const summary = await generateText({

@@ -1,5 +1,5 @@
 import { stringToUuid } from "@elizaos/core";
-import { BroadcastResult, operationResultType } from "./types";
+import { operationResultType } from "./types";
 import { PostResult } from "@lens-protocol/client";
 import { sendEip712Transaction, sendTransaction } from "viem/zksync";
 import { Account, Client } from "viem";
@@ -104,18 +104,6 @@ export function populateMentions(
     return result;
 }
 
-export const handleBroadcastResult = (
-    broadcastResult: any
-): BroadcastResult | undefined => {
-    const broadcastValue = broadcastResult.unwrap();
-
-    if ("id" in broadcastValue || "txId" in broadcastValue) {
-        return broadcastValue;
-    } else {
-        throw new Error();
-    }
-};
-
 export const handlePostResult = (
     postResult: PostResult
 ): PostResult | undefined => {
@@ -130,27 +118,6 @@ export const handlePostResult = (
 
     throw new Error("Unexpected PostResult type");
 };
-
-export const getProfilePictureUri = (picture: any): string | undefined => {
-    if (picture && "optimized" in picture) {
-        return picture.optimized?.uri || picture.raw?.uri || picture.uri;
-    } else {
-        return picture.uri;
-    }
-};
-
-export function omit<T extends object, K extends string>(
-    obj: T,
-    key: K
-): Omit<T, K> {
-    const result: any = {};
-    Object.keys(obj).forEach((currentKey) => {
-        if (currentKey !== key) {
-            result[currentKey] = obj[currentKey];
-        }
-    });
-    return result;
-}
 
 // Type guard function to check if metadata has content
 export function hasContent(metadata: any): metadata is { content: string } {

@@ -21,7 +21,7 @@ import {
 } from "@lens-protocol/client/actions";
 import { UserAccount, operationResultType } from "./types";
 import { PrivateKeyAccount, Client as WalletClient } from "viem";
-import { getProfilePictureUri, omit, handleTxnLifeCycle } from "./utils";
+import { handleTxnLifeCycle } from "./utils";
 //import { parse } from "graphql";
 export class LensClient {
     runtime: IAgentRuntime;
@@ -110,7 +110,7 @@ export class LensClient {
                 throw new Error();
             }
         } catch (error) {
-            elizaLogger.error("client-lens::client error: ", error);
+            elizaLogger.error("client-lens:: auth error", error);
             throw error;
         }
     }
@@ -156,30 +156,56 @@ export class LensClient {
                     "Failed to comment" + postExecutionResult.error
                 );
             }
-            const postResult: operationResultType = postExecutionResult.value;
 
+            const postResult: operationResultType = postExecutionResult.value;
+            elizaLogger.debug("Post execution result:", postResult);
             const txnResult: string = await handleTxnLifeCycle(
                 postResult,
                 this.walletClient,
                 this.signer
             );
 
-            elizaLogger.log("Transaction result: ", txnResult);
+            // Add debug logs
+            elizaLogger.debug("Transaction hash received:", txnResult);
 
-            // we have to return the post object
-            const postResponse = await fetchPost(this.core, {
-                txHash: txnResult,
-            });
-            if (postResponse.isOk()) {
-                const post = postResponse.value;
-                if (!post) {
-                    throw new Error("Post not found after creation");
+            // Add retry logic with delay
+            let viewPost: AnyPost | undefined;
+            let attempts = 0;
+            const maxAttempts = 5;
+            const delayMs = 5000; // 5 seconds
+
+            while (!viewPost && attempts < maxAttempts) {
+                attempts++;
+                elizaLogger.info(`Attempt ${attempts} to fetch post...`);
+
+                const postResponse = await fetchPost(this.sessionClient, {
+                    txHash: txnResult,
+                });
+
+                if (postResponse.isOk() && postResponse.value) {
+                    viewPost = postResponse?.value;
+                    break;
                 }
-                return post;
+
+                if (attempts < maxAttempts) {
+                    elizaLogger.info(
+                        `Post not ready, waiting ${delayMs}ms before retry...`
+                    );
+                    await new Promise((resolve) =>
+                        setTimeout(resolve, delayMs)
+                    );
+                }
             }
-            throw new Error("Failed to fetch created post");
+
+            if (!viewPost) {
+                throw new Error(
+                    `Failed to fetch post after ${maxAttempts} attempts`
+                );
+            }
+
+            return viewPost;
         } catch (error) {
-            elizaLogger.error("client-lens::client error: ", error);
+            elizaLogger.error("client-lens::create post error: ", error);
             throw error;
         }
     }
@@ -189,7 +215,18 @@ export class LensClient {
             return this.cache.get(`lens/post/${postId}`);
         }
 
-        const postResult = await fetchPost(this.core, { post: postId });
+        if (!this.authenticated || !this.sessionClient) {
+            await this.authenticate();
+            elizaLogger.log("done authenticating");
+        }
+
+        if (!this.sessionClient) {
+            elizaLogger.error("sessionClient is null");
+            throw new Error("sessionClient is null");
+        }
+        const postResult = await fetchPost(this.sessionClient, {
+            post: postId,
+        });
 
         if (postResult.isErr()) {
             console.error("Error fetching post", postResult.error);
@@ -260,7 +297,7 @@ export class LensClient {
             {"value":{"__typename":"PaginatedNotificationResult","items":[],
             "pageInfo":{"__typename":"PaginatedResultInfo","prev":null,"next":null}}}
          */
-        elizaLogger.info("fetchNotifications result", result);
+        elizaLogger.info("done fetching notifications...");
         const mentions: AnyPost[] = [];
 
         const unwrappedResult = result.unwrapOr({ items: [], next: undefined });
@@ -310,7 +347,6 @@ export class LensClient {
             cover: "",
         };
 
-        elizaLogger.debug("gql query result", result);
         if (result.isOk()) {
             const data = result?.value;
             account.usernameId = data?.username?.id;
@@ -335,44 +371,51 @@ export class LensClient {
                 await this.authenticate();
             }
 
+            if (!this.sessionClient) {
+                throw new Error("sessionClient is null after authentication");
+            }
+
             const timeline: AnyPost[] = [];
 
             // Initial fetch outside the loop
-            const initialResult = await fetchTimeline(
-                this.core.currentSession,
-                {
-                    account: userAddress,
-                    // filter: {
-                    //     eventType: ["POST", "QUOTE"],
-                    // },
-                }
-            );
+            const initialResult = await fetchTimeline(this.sessionClient, {
+                account: userAddress,
+                filter: {
+                    eventType: ["POST"],
+                },
+            });
+
+            //elizaLogger.info("Initial result data", initialResult);
 
             if (!initialResult || initialResult.isErr()) {
-                elizaLogger.warn("Initial fetch returned null");
+                elizaLogger.warn(
+                    "Initial fetch returned null",
+                    initialResult.error
+                );
                 return timeline;
             }
 
             let initialData;
             if (initialResult.isOk()) {
+                initialData = initialResult.value;
             }
-            initialData = initialResult.value;
             if (!initialData || !initialData.items) {
                 elizaLogger.warn("Invalid data structure in initial fetch");
                 return timeline;
             }
 
+            //elizaLogger.info("Initial fetch data", initialData);
             // Process initial items
             for (const item of initialData.items) {
                 if (timeline.length >= limit) break;
 
-                if (!item || !item.root || !item.id) {
+                if (!item || !item.primary || !item.primary?.id) {
                     elizaLogger.warn("Invalid item in timeline");
                     continue;
                 }
 
-                const post = item.root as AnyPost;
-                this.cache.set(`lens/post/${item.id}`, post);
+                const post = item.primary as AnyPost;
+                this.cache.set(`lens/post/${item.primary?.id}`, post);
                 timeline.push(post);
             }
 
@@ -391,10 +434,11 @@ export class LensClient {
                     for (const item of data.items) {
                         if (timeline.length >= limit) break;
 
-                        if (!item || !item.root || !item.id) continue;
+                        if (!item || !item.primary || !item.primary.id)
+                            continue;
 
-                        const post = item.root as AnyPost;
-                        this.cache.set(`lens/post/${item.id}`, post);
+                        const post = item.primary as AnyPost;
+                        this.cache.set(`lens/post/${item.primary.id}`, post);
                         timeline.push(post);
                     }
 
@@ -407,7 +451,6 @@ export class LensClient {
                     break; // Exit loop but return what we have so far
                 }
             }
-
             return timeline;
         } catch (error) {
             elizaLogger.error("Failed to fetch timeline", {
@@ -420,113 +463,4 @@ export class LensClient {
                 : new Error(`Failed to fetch timeline: ${error}`);
         }
     }
-    /**
-    private async createPostOnchain(
-        contentURI: string
-    ): Promise<BroadcastResult | undefined> {
-        // gasless + signless if they enabled the lens profile manager
-        if (this.authenticatedProfile?.signless) {
-            const broadcastResult = await this.core.publication.postOnchain({
-                contentURI,
-                openActionModules: [], // TODO: if collectable
-            });
-            return handleBroadcastResult(broadcastResult);
-        }
-
-        // gasless with signed type data
-        const typedDataResult =
-            await this.core.publication.createOnchainPostTypedData({
-                contentURI,
-                openActionModules: [], // TODO: if collectable
-            });
-        const { id, typedData } = typedDataResult.unwrap();
-
-        const signedTypedData = await this.account.signTypedData({
-            domain: omit(typedData.domain as any, "__typename"),
-            types: omit(typedData.types, "__typename"),
-            primaryType: "Post",
-            message: omit(typedData.value, "__typename"),
-        });
-
-        const broadcastResult = await this.core.transaction.broadcastOnchain({
-            id,
-            signature: signedTypedData,
-        });
-        return handleBroadcastResult(broadcastResult);
-    }
-
-    private async createCommentOnchain(
-        contentURI: string,
-        commentOn: string
-    ): Promise<BroadcastResult | undefined> {
-        // gasless + signless if they enabled the lens profile manager
-        if (this.authenticatedProfile?.signless) {
-            const broadcastResult = await this.core.publication.commentOnchain({
-                commentOn,
-                contentURI,
-            });
-            return handleBroadcastResult(broadcastResult);
-        }
-
-        // gasless with signed type data
-        const typedDataResult =
-            await this.core.publication.createOnchainCommentTypedData({
-                commentOn,
-                contentURI,
-            });
-
-        const { id, typedData } = typedDataResult.unwrap();
-
-        const signedTypedData = await this.account.signTypedData({
-            domain: omit(typedData.domain as any, "__typename"),
-            types: omit(typedData.types, "__typename"),
-            primaryType: "Comment",
-            message: omit(typedData.value, "__typename"),
-        });
-
-        const broadcastResult = await this.core.transaction.broadcastOnchain({
-            id,
-            signature: signedTypedData,
-        });
-        return handleBroadcastResult(broadcastResult);
-    }
-
-    private async createCommentMomoka(
-        contentURI: string,
-        commentOn: string
-    ): Promise<BroadcastResult | undefined> {
-        // gasless + signless if they enabled the lens profile manager
-        if (this.authenticatedProfile?.signless) {
-            const broadcastResult = await this.core.publication.commentOnMomoka(
-                {
-                    commentOn,
-                    contentURI,
-                }
-            );
-            return handleBroadcastResult(broadcastResult);
-        }
-
-        // gasless with signed type data
-        const typedDataResult =
-            await this.core.publication.createMomokaCommentTypedData({
-                commentOn,
-                contentURI,
-            });
-
-        const { id, typedData } = typedDataResult.unwrap();
-
-        const signedTypedData = await this.account.signTypedData({
-            domain: omit(typedData.domain as any, "__typename"),
-            types: omit(typedData.types, "__typename"),
-            primaryType: "Comment",
-            message: omit(typedData.value, "__typename"),
-        });
-
-        const broadcastResult = await this.core.transaction.broadcastOnMomoka({
-            id,
-            signature: signedTypedData,
-        });
-        return handleBroadcastResult(broadcastResult);
-    }
-         */
 }

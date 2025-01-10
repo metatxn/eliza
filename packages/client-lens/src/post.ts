@@ -11,7 +11,7 @@ import { formatTimeline, postTemplate } from "./prompts";
 import { postUuid } from "./utils";
 import { createPostMemory } from "./memory";
 import { sendPost } from "./actions";
-import StorjProvider from "./providers/StorjProvider";
+import { StorageProvider } from "./providers/StorageProvider";
 import { EvmAddress } from "@lens-protocol/client";
 import { LensStorageClient } from "./providers/LensStorage";
 
@@ -23,33 +23,33 @@ export class LensPostManager {
         public runtime: IAgentRuntime,
         private smartAccountAddress: EvmAddress,
         public cache: Map<string, any>,
-        private ipfs: typeof LensStorageClient
+        private storage: StorageProvider
     ) {}
 
     public async start() {
-        const generateNewPubLoop = async () => {
+        const generateNewPostLoop = async () => {
             try {
-                await this.generateNewPublication();
+                await this.generateNewPost();
             } catch (error) {
                 elizaLogger.error(error);
                 return;
             }
 
             this.timeout = setTimeout(
-                generateNewPubLoop,
+                generateNewPostLoop,
                 (Math.floor(Math.random() * (4 - 1 + 1)) + 1) * 60 * 60 * 1000
             ); // Random interval between 1 and 4 hours
         };
 
-        generateNewPubLoop();
+        generateNewPostLoop();
     }
 
     public async stop() {
         if (this.timeout) clearTimeout(this.timeout);
     }
 
-    private async generateNewPublication() {
-        elizaLogger.info("Generating new publication");
+    private async generateNewPost() {
+        elizaLogger.info("Generating new post");
         try {
             const userAccount = await this.client.getAccount(
                 this.smartAccountAddress
@@ -115,7 +115,7 @@ export class LensPostManager {
                     runtime: this.runtime,
                     roomId: generateRoomId,
                     content: { text: content },
-                    ipfs: this.ipfs,
+                    storage: this.storage,
                 });
 
                 const post = response.post;
@@ -136,7 +136,7 @@ export class LensPostManager {
                     roomId
                 );
 
-                elizaLogger.info(`[Lens Client] Published ${post.id}`);
+                elizaLogger.info(`[Lens Client] Posted ${post.id}`);
 
                 await this.runtime.messageManager.createMemory(
                     createPostMemory({
@@ -146,10 +146,10 @@ export class LensPostManager {
                     })
                 );
             } catch (error) {
-                elizaLogger.error("Error sending publication:", error);
+                elizaLogger.error("Error sending post:", error);
             }
         } catch (error) {
-            elizaLogger.error("Error generating new publication:", error);
+            elizaLogger.error("Error generating new post:", error);
         }
     }
 }

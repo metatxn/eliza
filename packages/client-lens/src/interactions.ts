@@ -19,24 +19,27 @@ import {
     messageHandlerTemplate,
     shouldRespondTemplate,
 } from "./prompts";
-import { postUuid } from "./utils";
+import { hasContent, postUuid } from "./utils";
 import { sendPost } from "./actions";
 import { AnyPost, EvmAddress } from "@lens-protocol/client";
 
-import StorjProvider from "./providers/StorjProvider";
+import { StorageProvider } from "./providers/StorageProvider";
 import { UserAccount } from "./types";
 import { LensStorageClient } from "./providers/LensStorage";
 
 export class LensInteractionManager {
     private timeout: NodeJS.Timeout | undefined;
+    private startupTime: Date;
     constructor(
         public client: LensClient,
         public runtime: IAgentRuntime,
         // TODO: check for good var name and make it consistent throughout the codebase
         private smartAccountAddress: EvmAddress,
         public cache: Map<string, any>,
-        private ipfs: typeof LensStorageClient
-    ) {}
+        private storage: StorageProvider
+    ) {
+        this.startupTime = new Date();
+    }
 
     public async start() {
         const handleInteractionsLoop = async () => {
@@ -68,9 +71,9 @@ export class LensInteractionManager {
         const { mentions } = await this.client.getMentions();
 
         const agent = await this.client.getAccount(this.smartAccountAddress);
-        elizaLogger.info(`[Lens Client] User account: ${agent.name}`);
+        elizaLogger.info(`[Lens Client] agent account: ${agent.name}`);
         for (const mention of mentions) {
-            elizaLogger.info("Handling mention", mention);
+            //elizaLogger.info("Handling mention", mention);
             const messageHash = toHex(mention?.id);
             const conversationId = `${messageHash}-${this.runtime.agentId}`;
             elizaLogger.info("conversationId", conversationId);
@@ -96,7 +99,8 @@ export class LensInteractionManager {
                     userId,
                     roomId,
                     mention.author.address,
-                    mention.author?.username?.localName, // as of now, author metadata is not present in Post.author
+                    mention.author.metadata?.name ||
+                        mention.author.username?.localName, // as of now, author metadata is not present in Post.author
                     "lens"
                 );
 
@@ -108,15 +112,16 @@ export class LensInteractionManager {
 
                 const memory: Memory = {
                     content: {
-                        // @ts-ignore metadata.content
-                        text: mention.metadata.content,
+                        text: hasContent(mention.metadata)
+                            ? mention.metadata.content
+                            : "Default content",
                         hash: mention.id,
                     },
                     agentId: this.runtime.agentId,
                     userId,
                     roomId,
                 };
-                await this.handlePublication({
+                await this.handlePost({
                     agent,
                     post: mention,
                     memory,
@@ -128,7 +133,7 @@ export class LensInteractionManager {
         this.client.lastInteractionTimestamp = new Date();
     }
 
-    private async handlePublication({
+    private async handlePost({
         agent,
         post,
         memory,
@@ -139,7 +144,19 @@ export class LensInteractionManager {
         memory: Memory;
         thread: AnyPost[];
     }) {
-        elizaLogger.info("Handling publication", post.id);
+        elizaLogger.debug("Handling post with post: ", post);
+        elizaLogger.debug("Handling post with memory: ", memory);
+
+        // Skip if post is older than startup time
+        if (
+            post.__typename === "Post" &&
+            new Date(post.timestamp) < this.startupTime
+        ) {
+            elizaLogger.info(`Skipping old post from ${post.timestamp}`);
+            return;
+        }
+
+        // skip the response if the post is from the bot itself
         if (
             post.__typename === "Post" &&
             post?.author?.address === agent?.address
@@ -148,6 +165,7 @@ export class LensInteractionManager {
             return;
         }
 
+        // skip the response if the post has no text
         if (!memory.content.text) {
             elizaLogger.info("skipping cast with no text", post?.id);
             return { text: "", action: "IGNORE" };
@@ -182,6 +200,7 @@ export class LensInteractionManager {
             .filter(Boolean)
             .join("\n\n");
 
+        // Compose initial state
         const state = await this.runtime.composeState(memory, {
             lensHandle: agent.localName,
             timeline: formattedTimeline,
@@ -193,7 +212,7 @@ export class LensInteractionManager {
             state,
             template:
                 this.runtime.character.templates?.lensShouldRespondTemplate ||
-                this.runtime.character?.templates?.shouldRespondTemplate ||
+                this.runtime.character.templates?.shouldRespondTemplate ||
                 shouldRespondTemplate,
         });
 
@@ -226,7 +245,7 @@ export class LensInteractionManager {
             shouldRespondResponse === "STOP"
         ) {
             elizaLogger.info(
-                `Not responding to publication because generated ShouldRespond was ${shouldRespondResponse}`
+                `Not responding to post because generated ShouldRespond was ${shouldRespondResponse}`
             );
             return;
         }
@@ -242,16 +261,20 @@ export class LensInteractionManager {
         const responseContent = await generateMessageResponse({
             runtime: this.runtime,
             context,
-            modelClass: ModelClass.LARGE,
+            modelClass: ModelClass.SMALL,
         });
 
+        /** UUID of parent message if this is a reply/thread */
         responseContent.inReplyTo = memoryId;
+        responseContent.action = shouldRespondResponse ?? undefined;
+
+        elizaLogger.debug("Generated response", responseContent);
 
         if (!responseContent.text) return;
 
         if (this.runtime.getSetting("LENS_DRY_RUN") === "true") {
             elizaLogger.info(
-                `Dry run: would have responded to publication ${post.id} with ${responseContent.text}`
+                `Dry run: would have responded to post ${post.id} with ${responseContent.text}`
             );
             return;
         }
@@ -270,17 +293,17 @@ export class LensInteractionManager {
                     content: content,
                     roomId: memory.roomId,
                     commentOn: post.id,
-                    ipfs: this.ipfs,
+                    storage: this.storage,
                 });
-                if (!result?.post?.id) throw new Error("publication not sent");
+                if (!result?.post?.id) throw new Error("post not sent");
 
-                // sendPublication lost response action, so we need to add it back here?
+                // sendPost lost response action, so we need to add it back here?
                 result.memory!.content.action = content.action;
 
                 await this.runtime.messageManager.createMemory(result.memory!);
                 return [result.memory!];
             } catch (error) {
-                console.error("Error sending response cast:", error);
+                console.error("Error sending response post:", error);
                 return [];
             }
         };
