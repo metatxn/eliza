@@ -1,7 +1,7 @@
 import { IAgentRuntime } from "@elizaos/core";
 
 export interface UploadResponse {
-    cid: string;
+    cid?: string | null;
     url: string;
 }
 
@@ -9,6 +9,7 @@ export enum StorageProviderEnum {
     PINATA = "pinata",
     STORJ = "storj",
     ARWEAVE = "arweave",
+    LENS = "lens-storage",
 }
 
 export interface StorageProvider {
