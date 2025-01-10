@@ -1,7 +1,7 @@
 {
     "name": "tate",
     "clients": ["lens"],
-    "modelProvider": "gaianet",
+    "modelProvider": "openai",
     "settings": {
         "secrets": {},
         "voice": {
