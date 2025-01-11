@@ -40,10 +40,31 @@ export class LensStorageProvider implements StorageProvider {
     ): Promise<UploadResponse> {
         try {
             elizaLogger.debug("Attempting to upload JSON:", json);
-            const resource = await this.lensStorage.uploadAsJson(json);
-            elizaLogger.debug("Upload JSON response:", resource);
+
+            // Make direct fetch request matching the curl format
+            const response = await fetch(
+                "https://storage-api.testnet.lens.dev",
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body:
+                        typeof json === "string" ? json : JSON.stringify(json),
+                }
+            );
+
+            if (!response.ok) {
+                const text = await response.text();
+                throw new Error(`Upload failed: ${text}`);
+            }
+
+            const [data] = await response.json();
+            elizaLogger.debug("Upload JSON response:", data);
+
             return {
-                url: resource.gatewayUrl,
+                url: data.gateway_url,
+                cid: data.storage_key,
             };
         } catch (error: any) {
             elizaLogger.error("Detailed JSON upload error:", {
@@ -51,9 +72,7 @@ export class LensStorageProvider implements StorageProvider {
                 message: error.message,
                 stack: error.stack,
             });
-            throw new Error(
-                `Failed to upload JSON using lens-storage: ${error.message}`
-            );
+            throw error;
         }
     }
 }
