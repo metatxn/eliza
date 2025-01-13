@@ -1,8 +1,9 @@
 {
     "name": "@elizaos/client-lens",
-    "version": "0.1.7-alpha.2",
-    "main": "dist/index.js",
+    "version": "0.1.8+build.1",
     "type": "module",
+    "main": "dist/index.js",
+    "module": "dist/index.js",
     "types": "dist/index.d.ts",
     "dependencies": {
         "@elizaos/core": "workspace:*",
