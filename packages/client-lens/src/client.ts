@@ -11,7 +11,6 @@ import {
     EvmAddress,
 } from "@lens-protocol/client";
 import {
-    currentSession,
     fetchAccount,
     fetchNotifications,
     fetchPost,
@@ -267,7 +266,7 @@ export class LensClient {
 
     async getMentions(): Promise<{
         mentions: AnyPost[];
-        next?: () => {};
+        next?: () => void;
     }> {
         if (!this.authenticated || !this.sessionClient) {
             await this.authenticate();

@@ -35,43 +35,30 @@ export class LensStorageProvider implements StorageProvider {
         }
     }
 
-    async uploadJson(
-        json: Record<string, any> | string
-    ): Promise<UploadResponse> {
+    async uploadJson(json: unknown): Promise<UploadResponse> {
         try {
             elizaLogger.debug("Attempting to upload JSON:", json);
 
-            // Make direct fetch request matching the curl format
-            const response = await fetch(
-                "https://storage-api.testnet.lens.dev",
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    body:
-                        typeof json === "string" ? json : JSON.stringify(json),
-                }
-            );
+            // Use the pattern from the working test script
+            const result = await this.lensStorage.uploadAsJson(json);
 
-            if (!response.ok) {
-                const text = await response.text();
-                throw new Error(`Upload failed: ${text}`);
-            }
-
-            const [data] = await response.json();
-            elizaLogger.debug("Upload JSON response:", data);
+            elizaLogger.debug("Upload successful:", result);
 
             return {
-                url: data.gateway_url,
-                cid: data.storage_key,
+                cid: result.storageKey,
+                url: result.gatewayUrl,
             };
         } catch (error: any) {
-            elizaLogger.error("Detailed JSON upload error:", {
+            elizaLogger.error("Upload error:", {
                 name: error.name,
                 message: error.message,
                 stack: error.stack,
             });
+
+            if (error.name === "StorageClientError") {
+                elizaLogger.error("Storage client error:", error.message);
+            }
+
             throw error;
         }
     }

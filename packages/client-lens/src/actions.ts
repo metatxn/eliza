@@ -6,7 +6,7 @@ import {
     type Memory,
     type UUID,
 } from "@elizaos/core";
-import { textOnly, article, image, video } from "@lens-protocol/metadata";
+import { textOnly } from "@lens-protocol/metadata";
 import { createPostMemory } from "./memory";
 import { AnyPost } from "@lens-protocol/client";
 import { StorageProvider } from "./providers/StorageProvider";
