@@ -22,7 +22,8 @@ export function createPostMemory({
     const commentOn =
         post.__typename === "Post"
             ? post.commentOn
-            : undefined // TODO: check if this is correct
+            : // eslint-disable-next-line no-constant-condition
+              undefined // TODO: check if this is correct
               ? postUuid({
                     pubId: post.id,
                     agentId: runtime.agentId,

@@ -184,7 +184,7 @@ export class LensInteractionManager {
         const formattedConversation = thread
             .map((pub) => {
                 if (pub.__typename !== "Post") return "";
-                // @ts-ignore Metadata
+                // @ts-expect-error Metadata
                 const content = pub.metadata.content;
                 return `@${pub.author?.username?.localName} (${new Date(
                     pub.timestamp
@@ -280,6 +280,7 @@ export class LensInteractionManager {
 
         const callback: HandlerCallback = async (
             content: Content,
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             files: any[]
         ) => {
             try {

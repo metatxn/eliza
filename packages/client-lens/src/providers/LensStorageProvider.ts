@@ -37,22 +37,25 @@ export class LensStorageProvider implements StorageProvider {
 
     async uploadJson(json: unknown): Promise<UploadResponse> {
         try {
-            elizaLogger.debug("Attempting to upload JSON:", json);
+            elizaLogger.debug("Starting upload with JSON:", json);
 
-            // Use the pattern from the working test script
             const result = await this.lensStorage.uploadAsJson(json);
-
             elizaLogger.debug("Upload successful:", result);
 
             return {
                 cid: result.storageKey,
                 url: result.gatewayUrl,
             };
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (error: any) {
-            elizaLogger.error("Upload error:", {
-                name: error.name,
-                message: error.message,
-                stack: error.stack,
+            elizaLogger.error("Upload failed:", {
+                step: "uploadJson",
+                nodeVersion: process.version,
+                error: {
+                    name: error.name,
+                    message: error.message,
+                    stack: error.stack,
+                },
             });
 
             if (error.name === "StorageClientError") {

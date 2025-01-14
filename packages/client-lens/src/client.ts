@@ -21,7 +21,7 @@ import {
 import { UserAccount, operationResultType } from "./types";
 import { PrivateKeyAccount, Client as WalletClient } from "viem";
 import { handleTxnLifeCycle } from "./utils";
-//import { parse } from "graphql";
+
 export class LensClient {
     runtime: IAgentRuntime;
     signer: PrivateKeyAccount;
@@ -35,13 +35,6 @@ export class LensClient {
     private authenticated: boolean;
     private authenticatedAccount: Account | null;
     private core: LensClientCore;
-
-    // signer -> instance of wallet account to sign messages
-    // accountId -> Not necessary as of now
-    // sessionClient -> Will be used with lens client to make authenticated mutations
-    // accountAddress -> address of the lens-account, Not user address
-    // authenticated -> Bool to represent if the client is authenticated
-    // authenticatedAccount -> Account details of the lens-account
 
     constructor(opts: {
         runtime: IAgentRuntime;
@@ -59,7 +52,7 @@ export class LensClient {
         this.walletClient = opts.walletClient;
         this.core = LensClientCore.create({
             environment: testnet,
-            origin: "https://myappdomain.xyz", // Ignored if running in a browser
+            origin: "https://myappdomain.xyz",
             debug: true,
             cache: true,
         });
@@ -69,15 +62,23 @@ export class LensClient {
         this.sessionClient = null;
     }
 
-    async authenticate(): Promise<void> {
+    /**
+     * Ensures the client is authenticated.
+     * If not, it calls the `authenticate` method.
+     */
+    private async ensureAuthenticated(): Promise<void> {
+        if (!this.authenticated || !this.sessionClient) {
+            await this.authenticate();
+        }
+    }
+
+    /**
+     * Authenticates the client with the Lens Protocol.
+     */
+    private async authenticate(): Promise<void> {
         try {
             elizaLogger.info("Authenticating lens client");
-            // to login We need to provide, Account's unique address, app address, instance of
-            // user address made using PrivateKeyAccount.
 
-            // login as account owner, accountAddress is lens-account's address
-            // app address is the address of the app that is using the lens-account,
-            // owner address is actual user's address
             const authenticated = await this.core.login({
                 accountOwner: {
                     account: this.accountAddress,
@@ -88,25 +89,20 @@ export class LensClient {
             });
 
             if (authenticated.isErr()) {
-                return console.error(authenticated.error);
+                throw authenticated.error;
             }
 
-            // sessionClient: { ... }
-            const sessionClient = authenticated.value;
+            this.sessionClient = authenticated.value;
 
-            // set session client to use it for authenticated mutations
-            this.sessionClient = sessionClient;
-
-            // fetch account details from account address
-            const accountResult = await fetchAccount(sessionClient, {
+            const accountResult = await fetchAccount(this.sessionClient, {
                 address: this.accountAddress,
             });
+
             if (accountResult.isOk()) {
-                // set account details in authenticatedAccount
                 this.authenticatedAccount = accountResult.value;
                 this.authenticated = true;
             } else {
-                throw new Error();
+                throw new Error("Failed to fetch authenticated account");
             }
         } catch (error) {
             elizaLogger.error("client-lens:: auth error", error);
@@ -114,79 +110,70 @@ export class LensClient {
         }
     }
 
+    /**
+     * Creates a post or comment on the Lens Protocol.
+     */
     async createPost(contentUri: string, commentOn?: string): Promise<AnyPost> {
         try {
-            elizaLogger.info(
-                "Creating post via createPost...",
+            elizaLogger.debug("Creating post via createPost...", {
                 contentUri,
-                commentOn
-            );
-            if (!this.authenticated || !this.sessionClient) {
-                await this.authenticate();
-                elizaLogger.log("done authenticating");
-            }
+                commentOn,
+            });
 
-            // now that we are sure that we have authenticated, we can use sessionClient
+            await this.ensureAuthenticated();
+
             if (!this.sessionClient) {
-                elizaLogger.error("sessionClient is null after authentication");
                 throw new Error("sessionClient is null after authentication");
             }
 
-            let req: CreatePostRequest;
-
-            if (commentOn) {
-                req = {
-                    commentOn: { post: commentOn },
-                    contentUri,
-                };
-            } else {
-                req = {
-                    contentUri,
-                };
-            }
+            const req: CreatePostRequest = commentOn
+                ? { commentOn: { post: commentOn }, contentUri }
+                : { contentUri };
 
             const postExecutionResult = await post(this.sessionClient, req);
+
             if (postExecutionResult.isErr()) {
-                console.error(
-                    "failed to post comment",
+                elizaLogger.error(
+                    "Failed to post comment",
                     postExecutionResult.error
                 );
                 throw new Error(
-                    "Failed to comment" + postExecutionResult.error
+                    "Failed to comment: " + postExecutionResult.error.message
                 );
             }
 
             const postResult: operationResultType = postExecutionResult.value;
-            elizaLogger.debug("Post execution result:", postResult);
             const txnResult: string = await handleTxnLifeCycle(
                 postResult,
                 this.walletClient,
                 this.signer
             );
 
-            // Add debug logs
             elizaLogger.debug("Transaction hash received:", txnResult);
 
-            // Add retry logic with delay
-            let viewPost: AnyPost | undefined;
-            let attempts = 0;
+            // Retry logic to fetch the post after creation
+            let viewPost: AnyPost | null = null;
             const maxAttempts = 5;
-            const delayMs = 5000; // 5 seconds
+            const delayMs = 5000;
 
-            while (!viewPost && attempts < maxAttempts) {
-                attempts++;
-                elizaLogger.info(`Attempt ${attempts} to fetch post...`);
-
-                const postResponse = await fetchPost(this.sessionClient, {
-                    txHash: txnResult,
-                });
-
-                if (postResponse.isOk() && postResponse.value) {
-                    viewPost = postResponse?.value;
-                    break;
+            for (let attempts = 0; attempts < maxAttempts; attempts++) {
+                try {
+                    viewPost = await this.getPost({ txHash: txnResult });
+                    if (viewPost) {
+                        elizaLogger.info(
+                            "Successfully fetched post after attempt",
+                            attempts
+                        );
+                        break;
+                    }
+                } catch (error) {
+                    elizaLogger.error(
+                        `Error in fetch attempt ${attempts}:`,
+                        error
+                    );
                 }
 
-                if (attempts < maxAttempts) {
+                if (attempts < maxAttempts - 1) {
                     elizaLogger.info(
                         `Post not ready, waiting ${delayMs}ms before retry...`
                     );
@@ -209,33 +196,62 @@ export class LensClient {
         }
     }
 
-    async getPost(postId: string): Promise<AnyPost | null> {
-        if (this.cache.has(`lens/post/${postId}`)) {
-            return this.cache.get(`lens/post/${postId}`);
-        }
+    /**
+     * Fetches a post by its ID or transaction hash.
+     */
+    async getPost(options: {
+        postId?: string;
+        txHash?: string;
+    }): Promise<AnyPost | null> {
+        try {
+            const { postId, txHash } = options;
 
-        if (!this.authenticated || !this.sessionClient) {
-            await this.authenticate();
-            elizaLogger.log("done authenticating");
-        }
+            if (!postId && !txHash) {
+                throw new Error("Either postId or txHash must be provided");
+            }
 
-        if (!this.sessionClient) {
-            elizaLogger.error("sessionClient is null");
-            throw new Error("sessionClient is null");
-        }
-        const postResult = await fetchPost(this.sessionClient, {
-            post: postId,
-        });
+            // Check cache if fetching by postId
+            if (postId && this.cache.has(`lens/post/${postId}`)) {
+                return this.cache.get(`lens/post/${postId}`);
+            }
 
-        if (postResult.isErr()) {
-            console.error("Error fetching post", postResult.error);
-            return null;
-        } else {
-            this.cache.set(`lens/post/${postId}`, postResult);
-            return postResult?.value;
+            await this.ensureAuthenticated();
+
+            if (!this.sessionClient) {
+                throw new Error("sessionClient is null");
+            }
+
+            const postResult = await fetchPost(this.sessionClient, {
+                ...(postId ? { post: postId } : {}),
+                ...(txHash ? { txHash } : {}),
+            });
+
+            if (postResult.isErr()) {
+                elizaLogger.error("Error fetching post", {
+                    error: postResult.error,
+                    postId,
+                    txHash,
+                });
+                return null;
+            }
+
+            const post = postResult.value;
+
+            // Cache the result if we have a post and postId
+            if (post && post.id) {
+                this.cache.set(`lens/post/${post.id}`, post);
+            }
+
+            return post;
+        } catch (error) {
+            elizaLogger.error("Error in getPost", { error, ...options });
+            throw error;
         }
     }
 
+    /**
+     * Fetches posts for a specific author.
+     */
     async getPostsFor(
         authorAddress: string,
         pageSize: number = 50
@@ -264,20 +280,15 @@ export class LensClient {
         return timeline;
     }
 
-    async getMentions(): Promise<{
-        mentions: AnyPost[];
-        next?: () => void;
-    }> {
-        if (!this.authenticated || !this.sessionClient) {
-            await this.authenticate();
-            elizaLogger.log("done authenticating");
-        }
+    /**
+     * Fetches mentions and comments for the authenticated user.
+     */
+    async getMentions(): Promise<{ mentions: AnyPost[]; next?: () => void }> {
+        await this.ensureAuthenticated();
 
-        // now that we are sure that we have authenticated, we can use sessionClient
         if (!this.sessionClient) {
             throw new Error("sessionClient is null after authentication");
         }
-        // TODO: we should limit to new ones or at least latest n
 
         const result = await fetchNotifications(this.sessionClient, {
             filter: {
@@ -290,15 +301,7 @@ export class LensClient {
             },
         });
 
-        /**
-         * OUTPUT:
-         * fetchNotifications result
-            {"value":{"__typename":"PaginatedNotificationResult","items":[],
-            "pageInfo":{"__typename":"PaginatedResultInfo","prev":null,"next":null}}}
-         */
-        elizaLogger.info("done fetching notifications...");
         const mentions: AnyPost[] = [];
-
         const unwrappedResult = result.unwrapOr({ items: [], next: undefined });
         const items = unwrappedResult?.items;
         const next =
@@ -315,9 +318,9 @@ export class LensClient {
         return { mentions, next };
     }
 
-    // @note: smartAccountAddress is the address of the lens-account. when username is created then
-    // a smart account is created with the username and the address of the smart contract is the smartAccountAddress
-    // In LensV3, everything is getting accumulated at this address.
+    /**
+     * Fetches account details for a given smart account address.
+     */
     async getAccount(smartAccountAddress: EvmAddress): Promise<UserAccount> {
         if (this.cache.has(`lens/account/${smartAccountAddress}`)) {
             return this.cache.get(
@@ -325,14 +328,13 @@ export class LensClient {
             ) as UserAccount;
         }
 
-        // Note: account.metadata might get removed in future
-        // TODO: handle namespace as well
         const result = await fetchAccount(this.core, {
             address: smartAccountAddress,
         });
-        if (!result?.isOk) {
+
+        if (!result.isOk()) {
             elizaLogger.error("Error fetching user by account address");
-            throw "getAccount ERROR";
+            throw new Error("Failed to fetch account");
         }
 
         const account: UserAccount = {
@@ -347,7 +349,7 @@ export class LensClient {
         };
 
         if (result.isOk()) {
-            const data = result?.value;
+            const data = result.value;
             account.usernameId = data?.username?.id;
             account.address = data?.address;
             account.name = data?.metadata?.name;
@@ -356,27 +358,26 @@ export class LensClient {
             account.picture = data?.metadata?.picture;
             account.cover = data?.metadata?.coverPicture;
         }
-        this.cache.set(`lens/account/${smartAccountAddress}`, account);
 
+        this.cache.set(`lens/account/${smartAccountAddress}`, account);
         return account;
     }
 
+    /**
+     * Fetches the timeline for a given user address.
+     */
     async getTimeline(
         userAddress: EvmAddress,
         limit: number = 10
     ): Promise<AnyPost[]> {
         try {
-            if (!this.authenticated) {
-                await this.authenticate();
-            }
+            await this.ensureAuthenticated();
 
             if (!this.sessionClient) {
                 throw new Error("sessionClient is null after authentication");
             }
 
             const timeline: AnyPost[] = [];
-
-            // Initial fetch outside the loop
             const initialResult = await fetchTimeline(this.sessionClient, {
                 account: userAddress,
                 filter: {
@@ -384,9 +385,7 @@ export class LensClient {
                 },
             });
 
-            //elizaLogger.info("Initial result data", initialResult);
-
-            if (!initialResult || initialResult.isErr()) {
+            if (initialResult.isErr()) {
                 elizaLogger.warn(
                     "Initial fetch returned null",
                     initialResult.error
@@ -394,17 +393,12 @@ export class LensClient {
                 return timeline;
             }
 
-            let initialData;
-            if (initialResult.isOk()) {
-                initialData = initialResult.value;
-            }
+            const initialData = initialResult.value;
             if (!initialData || !initialData.items) {
                 elizaLogger.warn("Invalid data structure in initial fetch");
                 return timeline;
             }
 
-            //elizaLogger.info("Initial fetch data", initialData);
-            // Process initial items
             for (const item of initialData.items) {
                 if (timeline.length >= limit) break;
 
@@ -420,14 +414,11 @@ export class LensClient {
 
             // Only enter pagination loop if we need more items
             let nextPage = initialData.pageInfo?.next;
-
             while (nextPage && timeline.length < limit) {
                 try {
                     const result = await nextPage();
-
-                    if (!result) break;
-
                     const data = result.unwrap();
+
                     if (!data || !data.items) break;
 
                     for (const item of data.items) {
@@ -443,13 +434,14 @@ export class LensClient {
 
                     nextPage = data.pageInfo?.next;
                 } catch (paginationError) {
-                    elizaLogger.error("Error during pagination", {
-                        error: paginationError,
-                        currentLength: timeline.length,
-                    });
-                    break; // Exit loop but return what we have so far
+                    elizaLogger.error(
+                        "Error during pagination",
+                        paginationError
+                    );
+                    break;
                 }
             }
+
             return timeline;
         } catch (error) {
             elizaLogger.error("Failed to fetch timeline", {
