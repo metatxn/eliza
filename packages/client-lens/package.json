@@ -5,12 +5,25 @@
     "main": "dist/index.js",
     "module": "dist/index.js",
     "types": "dist/index.d.ts",
+    "exports": {
+        "./package.json": "./package.json",
+        ".": {
+            "import": {
+                "@elizaos/source": "./src/index.ts",
+                "types": "./dist/index.d.ts",
+                "default": "./dist/index.js"
+            }
+        }
+    },
+    "files": [
+        "dist"
+    ],
     "dependencies": {
         "@elizaos/core": "workspace:*",
         "@lens-network/sdk": "0.0.0-canary-20241203140504",
         "@lens-protocol/client": "0.0.0-canary-20250110105901",
         "@lens-protocol/metadata": "2.0.0-next.4",
-        "@lens-protocol/storage-node-client": "0.0.0-next-20241217195719",
+        "@lens-protocol/storage-node-client": "0.0.0-next-20250114134800",
         "arweave": "1.15.5",
         "axios": "^1.7.9",
         "viem": "^2.21.58"

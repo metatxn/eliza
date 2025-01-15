@@ -161,7 +161,7 @@ export class LensClient {
                     viewPost = await this.getPost({ txHash: txnResult });
                     if (viewPost) {
                         elizaLogger.info(
-                            "Successfully fetched post after attempt",
+                            "Successfully fetched post after attempt: ",
                             attempts
                         );
                         break;

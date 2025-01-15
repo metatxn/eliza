@@ -41,7 +41,6 @@ export class LensAgentClient implements Client {
             transport: http(),
         });
 
-        // need to change this to get the lens account address from runtime
         this.accountAddress = runtime.getSetting(
             "LENS_SMART_ACCOUNT_ADDRESS"
         )! as EvmAddress;
