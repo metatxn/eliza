@@ -40,13 +40,15 @@ export function createPostMemory({
         }),
         agentId: runtime.agentId,
         userId: senderId,
+        // TODO: add support for attachment
+        // TODO: can we check if a post is a thread if yes then pass inReplyTo which is UUID of parent message
         content: {
             text:
                 post.__typename === "Post" && hasContent(post.metadata)
                     ? post.metadata.content
                     : "Default content",
             source: "lens",
-            url: "",
+            url: "", //TODO: fix this
             commentOn,
             id: post.id,
         },
