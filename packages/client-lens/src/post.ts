@@ -140,6 +140,7 @@ export class LensPostManager {
                 await this.runtime.messageManager.createMemory(
                     createPostMemory({
                         roomId,
+                        senderId: this.runtime.agentId,
                         runtime: this.runtime,
                         post,
                     })

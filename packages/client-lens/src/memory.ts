@@ -12,10 +12,12 @@ import { AnyPost } from "@lens-protocol/client";
 
 export function createPostMemory({
     roomId,
+    senderId,
     runtime,
     post,
 }: {
     roomId: UUID;
+    senderId: UUID;
     runtime: IAgentRuntime;
     post: AnyPost;
 }): Memory {
@@ -30,19 +32,19 @@ export function createPostMemory({
                 })
               : undefined;
 
+    elizaLogger.debug("runtime agent in memory: ", runtime.agentId, senderId);
     return {
         id: postUuid({
             pubId: post.id,
             agentId: runtime.agentId,
         }),
         agentId: runtime.agentId,
-        userId: runtime.agentId,
+        userId: senderId,
         content: {
             text:
                 post.__typename === "Post" && hasContent(post.metadata)
                     ? post.metadata.content
                     : "Default content",
-            //text: "This is lens content",
             source: "lens",
             url: "",
             commentOn,
@@ -83,13 +85,18 @@ export async function buildConversationThread({
         if (!memory) {
             elizaLogger.log("Creating memory for post", currentPost.id);
 
-            const userId = stringToUuid("12");
+            // TODO: check the value of author.address in case of multiple usernames
+            const author =
+                currentPost.__typename === "Post"
+                    ? currentPost?.author?.address
+                    : "";
+            const userId = stringToUuid(author);
 
             if (currentPost.__typename === "Post") {
                 await runtime.ensureConnection(
                     userId,
                     roomId,
-                    currentPost?.author?.address,
+                    currentPost?.author?.username?.localName,
                     currentPost?.author?.metadata?.name ||
                         currentPost?.author?.username?.localName,
                     "lens"
@@ -100,6 +107,7 @@ export async function buildConversationThread({
             await runtime.messageManager.createMemory(
                 createPostMemory({
                     roomId,
+                    senderId: userId,
                     runtime,
                     post: currentPost,
                 })

@@ -172,6 +172,11 @@ export class LensInteractionManager {
 
         const currentPost = formatPost(post);
 
+        // TODO: check if author.address remains same if there are multiple usernames
+        const author = post.__typename == "Post" ? post.author.address : "null";
+        elizaLogger.debug("author in interactions: ", author);
+        const senderId = stringToUuid(author);
+
         const timeline = await this.client.getTimeline(
             this.smartAccountAddress
         );
@@ -227,6 +232,7 @@ export class LensInteractionManager {
             await this.runtime.messageManager.createMemory(
                 createPostMemory({
                     roomId: memory.roomId,
+                    senderId,
                     runtime: this.runtime,
                     post,
                 })

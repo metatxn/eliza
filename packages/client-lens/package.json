@@ -22,7 +22,7 @@
         "@elizaos/core": "workspace:*",
         "@lens-network/sdk": "0.0.0-canary-20241203140504",
         "@lens-protocol/client": "0.0.0-canary-20250110105901",
-        "@lens-protocol/metadata": "2.0.0-next.4",
+        "@lens-protocol/metadata": "2.0.0-next.5",
         "@lens-protocol/storage-node-client": "0.0.0-next-20250114134800",
         "arweave": "1.15.5",
         "axios": "^1.7.9",

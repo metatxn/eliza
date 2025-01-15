@@ -22,6 +22,7 @@ export class LensStorageProvider implements StorageProvider {
         mimetype: string;
     }): Promise<UploadResponse> {
         try {
+            //@ts-expect-error "file-buffer"
             const fileToUpload = new File([file.buffer], file.originalname, {
                 type: file.mimetype,
             });

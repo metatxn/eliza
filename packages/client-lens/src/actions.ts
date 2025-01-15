@@ -48,10 +48,12 @@ export async function sendPost({
     );
 
     if (post) {
+        elizaLogger.debug("runtime agent id: ", runtime.agentId);
         return {
             post,
             memory: createPostMemory({
                 roomId,
+                senderId: runtime.agentId,
                 runtime,
                 post: post,
             }),
