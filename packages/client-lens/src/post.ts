@@ -10,7 +10,7 @@ import { LensClient } from "./client";
 import { formatTimeline, postTemplate } from "./prompts";
 import { postUuid } from "./utils";
 import { createPostMemory } from "./memory";
-import { sendPost } from "./actions";
+import { sendPost } from "./actions/sendPost";
 import { StorageProvider } from "./providers/StorageProvider";
 import { EvmAddress } from "@lens-protocol/client";
 
@@ -109,13 +109,13 @@ export class LensPostManager {
             }
 
             try {
-                const response = await sendPost({
-                    client: this.client,
-                    runtime: this.runtime,
-                    roomId: generateRoomId,
-                    content: { text: content },
-                    storage: this.storage,
-                });
+                const response = await sendPost(
+                    this.runtime,
+                    this.client,
+                    { text: content },
+                    generateRoomId,
+                    this.storage
+                );
 
                 const post = response.post;
                 if (!post) throw new Error("failed to send post");

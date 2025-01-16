@@ -17,6 +17,7 @@ import {
     fetchPosts,
     fetchTimeline,
     post,
+    addReaction,
 } from "@lens-protocol/client/actions";
 import { UserAccount, operationResultType } from "./types";
 import { PrivateKeyAccount, Client as WalletClient } from "viem";
@@ -309,10 +310,10 @@ export class LensClient {
         items.map((notification) => {
             const item = notification.post || notification.comment;
             // TODO: isEncrypted is not available in lensV3
-            if (!item.isEncrypted) {
-                mentions.push(item);
-                this.cache.set(`lens/post/${item.id}`, item);
-            }
+            //if (!item.isEncrypted) {
+            mentions.push(item);
+            this.cache.set(`lens/post/${item.id}`, item);
+            //}
         });
 
         return { mentions, next };
@@ -452,6 +453,50 @@ export class LensClient {
             throw error instanceof Error
                 ? error
                 : new Error(`Failed to fetch timeline: ${error}`);
+        }
+    }
+
+    // Helper function to like a post
+    async likePost(post: AnyPost): Promise<void> {
+        try {
+            const postId = post.id;
+            elizaLogger.debug("Liking a post via likePost...", {
+                postId,
+            });
+
+            await this.ensureAuthenticated();
+
+            if (!this.sessionClient) {
+                throw new Error("sessionClient is null after authentication");
+            }
+
+            // first check if the agent already reacted on it
+            const isAlreadyUpvoted =
+                post.__typename == "Post" ? post.operations?.hasUpvoted : "";
+
+            if (!isAlreadyUpvoted) {
+                const result = await addReaction(this.sessionClient, {
+                    post: postId,
+                    reaction: "UPVOTE",
+                });
+                elizaLogger.debug("like post result: ", result);
+                if (result.isErr()) {
+                    elizaLogger.error("error in upvoting post", result.error);
+                } else if (result.value.__typename == "AddReactionResponse") {
+                    const response = result.value.success;
+                    elizaLogger.debug("response in like post: ", response);
+                } else if (result.value.__typename == "AddReactionFailure") {
+                    elizaLogger.warn(
+                        "error in upvoting post: ",
+                        result.value.reason
+                    );
+                }
+            }
+
+            await elizaLogger.info(`Liked post with ID: ${postId}`);
+        } catch (error) {
+            elizaLogger.error("Error liking post:", error);
+            throw error;
         }
     }
 }

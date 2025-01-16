@@ -1,4 +1,4 @@
-import type { LensClient } from "./client";
+import type { LensClient } from "../client";
 import {
     elizaLogger,
     type Content,
@@ -7,25 +7,18 @@ import {
     type UUID,
 } from "@elizaos/core";
 import { textOnly } from "@lens-protocol/metadata";
-import { createPostMemory } from "./memory";
+import { createPostMemory } from "../memory";
 import { AnyPost } from "@lens-protocol/client";
-import { StorageProvider } from "./providers/StorageProvider";
+import { StorageProvider } from "../providers/StorageProvider";
 
-export async function sendPost({
-    client,
-    runtime,
-    content,
-    roomId,
-    commentOn,
-    storage,
-}: {
-    client: LensClient;
-    runtime: IAgentRuntime;
-    content: Content;
-    roomId: UUID;
-    commentOn?: string;
-    storage: StorageProvider;
-}): Promise<{ memory?: Memory; post?: AnyPost }> {
+export async function sendPost(
+    runtime: IAgentRuntime,
+    client: LensClient,
+    content: Content,
+    roomId: UUID,
+    storage: StorageProvider,
+    commentOn?: string
+): Promise<{ memory?: Memory; post?: AnyPost }> {
     const metadata = textOnly({ content: content.text });
     let contentURI;
     try {

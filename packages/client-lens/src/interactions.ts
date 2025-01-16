@@ -20,7 +20,7 @@ import {
     shouldRespondTemplate,
 } from "./prompts";
 import { hasContent, postUuid } from "./utils";
-import { sendPost } from "./actions";
+import { sendPost } from "./actions/sendPost";
 import { AnyPost, EvmAddress } from "@lens-protocol/client";
 
 import { StorageProvider } from "./providers/StorageProvider";
@@ -172,7 +172,7 @@ export class LensInteractionManager {
 
         const currentPost = formatPost(post);
 
-        // TODO: check if author.address remains same if there are multiple usernames
+        // author.address is different for multiple usernames but account.owner remains same if using same MM addess
         const author = post.__typename == "Post" ? post.author.address : "null";
         elizaLogger.debug("author in interactions: ", author);
         const senderId = stringToUuid(author);
@@ -255,6 +255,15 @@ export class LensInteractionManager {
             return;
         }
 
+        // Add like action here - only if we're going to respond
+        try {
+            await this.client.likePost(post);
+            elizaLogger.info(`Liked post ${post.id} as we're going to respond`);
+        } catch (error) {
+            elizaLogger.error(`Failed to like post ${post.id}:`, error);
+            // Continue with response even if like fails
+        }
+
         const context = composeContext({
             state,
             template:
@@ -293,14 +302,14 @@ export class LensInteractionManager {
                 if (memoryId && !content.inReplyTo) {
                     content.inReplyTo = memoryId;
                 }
-                const result = await sendPost({
-                    runtime: this.runtime,
-                    client: this.client,
-                    content: content,
-                    roomId: memory.roomId,
-                    commentOn: post.id,
-                    storage: this.storage,
-                });
+                const result = await sendPost(
+                    this.runtime,
+                    this.client,
+                    content,
+                    memory.roomId,
+                    this.storage,
+                    post.id
+                );
                 if (!result?.post?.id) throw new Error("post not sent");
 
                 // sendPost lost response action, so we need to add it back here?
