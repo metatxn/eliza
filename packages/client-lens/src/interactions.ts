@@ -97,7 +97,7 @@ export class LensInteractionManager {
                 await this.runtime.ensureConnection(
                     userId,
                     roomId,
-                    mention.author.address,
+                    mention.author.username?.localName,
                     mention.author.metadata?.name ||
                         mention.author.username?.localName, // as of now, author metadata is not present in Post.author
                     "lens"

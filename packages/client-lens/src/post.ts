@@ -149,7 +149,12 @@ export class LensPostManager {
                 elizaLogger.error("Error sending post:", error);
             }
         } catch (error) {
-            elizaLogger.error("Error generating new post:", error);
+            elizaLogger.error("Error generating new post:", {
+                error: error instanceof Error ? error.message : error,
+                stack: error instanceof Error ? error.stack : undefined,
+                smartAccountAddress: this.smartAccountAddress,
+            });
+            throw error;
         }
     }
 }
